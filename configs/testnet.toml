@@ -1,0 +1,43 @@
+# QubitsCoin Testnet Configuration
+# ────────────────────────────────────────────────────────────────────────────
+# Use this config to join the public testnet.
+# Start with: qbc-node start --config configs/testnet.toml
+
+[chain]
+network_id = 2
+name       = "QubitsCoin Testnet"
+
+[node]
+data_dir      = "~/.qbc-testnet"
+keystore_file = "keystore.json"
+miner_enabled = false
+log_level     = "debug"   # more verbose on testnet
+
+[p2p]
+listen_addr   = "0.0.0.0:18765"
+external_addr = ""
+max_peers     = 50
+bootstrap_peers = [
+  "qbc-testnet-seed1.qubitscoin.io:18765",
+  "qbc-testnet-seed2.qubitscoin.io:18765",
+]
+
+[rpc]
+enabled      = true
+listen_addr  = "127.0.0.1:18545"
+cors_origins = ["*"]   # permissive on testnet
+read_timeout  = "30s"
+write_timeout = "30s"
+
+[storage]
+blocks_dir = "blocks"
+state_dir  = "state"
+
+[metrics]
+enabled     = true   # expose metrics on testnet for dashboards
+listen_addr = "0.0.0.0:19090"
+
+[upgrade]
+release_url    = "https://api.github.com/repos/qbc-qubitscoin/qubitscoin/releases/latest"
+check_interval = "30m"
+auto_apply     = false

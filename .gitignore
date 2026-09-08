@@ -1,0 +1,66 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/node
+/node.exe
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+*.prof
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+
+# Upgrade downloads
+*.tmp
+*.bak
+
+# Local config / keys (NEVER commit private keys or keystores)
+*.pem
+*.key
+testnet_key.bin
+keystore.json
+*.keystore
+
+# Build output
+bin/
+coverage/
+
+# Node data directories (contain chain DB, state, keys)
+data/
+.qbc/
+.qbc-testnet/
+
+# Environment files with secrets
+.env
+.env.local
+
+# LevelDB lock files
+LOCK
+*.ldb
+
+# Docker volumes baked into working tree
+volumes/

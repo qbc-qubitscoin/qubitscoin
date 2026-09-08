@@ -1,0 +1,82 @@
+# docker-compose.yml — QubitsCoin node + optional monitoring stack
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Quick start:
+#   cp .env.example .env   # set QBC_PASSWORD
+#   docker compose up -d
+#
+# With Prometheus + Grafana:
+#   docker compose --profile monitoring up -d
+#
+
+services:
+
+  # ── QBC full node ───────────────────────────────────────────────────────────
+  qbc-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: qbc-node:latest
+    container_name: qbc-node
+    restart: unless-stopped
+    environment:
+      # Password is read from QBC_PASSWORD env var inside the container.
+      # Never pass it as a CLI flag — it would appear in `docker inspect`.
+      QBC_PASSWORD: "${QBC_PASSWORD:?QBC_PASSWORD must be set in .env}"
+    ports:
+      - "8765:8765/tcp"            # P2P — must be open to the internet
+      - "127.0.0.1:8545:8545/tcp" # RPC — localhost only; use a reverse proxy for public access
+      - "9090:9090/tcp"            # Prometheus metrics — restrict to internal network
+    volumes:
+      - qbc-data:/data
+      - ./configs/mainnet.toml:/data/config.toml:ro
+    command: >
+      start
+      --config /data/config.toml
+      --datadir /data
+      --metrics
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - >
+          wget -qO- --post-data='{"jsonrpc":"2.0","id":1,"method":"qbc_blockHeight","params":null}'
+          --header='Content-Type: application/json'
+          http://localhost:8545/ | grep -q 'result'
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  # ── Prometheus (optional — enable with --profile monitoring) ────────────────
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v2.53.0
+    container_name: qbc-prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090/tcp"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+
+  # ── Grafana (optional — enable with --profile monitoring) ───────────────────
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:11.2.0
+    container_name: qbc-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-admin}"
+    ports:
+      - "3000:3000/tcp"
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  qbc-data:
+  prometheus-data:
+  grafana-data:

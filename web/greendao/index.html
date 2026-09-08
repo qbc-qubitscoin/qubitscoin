@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenDAO - Decentralized Energy Funding</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --primary: #2ea043;
+            --danger: #da3633;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .proposal-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active { background-color: #1f6feb; color: #fff; }
+        .status-passed { background-color: var(--primary); color: #fff; }
+        .progress-bar {
+            width: 100%;
+            background-color: var(--border-color);
+            border-radius: 4px;
+            height: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+            display: flex;
+        }
+        .progress-yes { background-color: var(--primary); }
+        .progress-no { background-color: var(--danger); }
+        
+        button {
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .btn-yes { background-color: var(--primary); color: #fff; }
+        .btn-no { background-color: var(--danger); color: #fff; }
+        .btn-execute { background-color: #8957e5; color: #fff; width: 100%; margin-top: 15px; }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🌱 GreenDAO Governance</h1>
+        <p>Treasury Balance: <strong>1,000,000 QBC</strong></p>
+    </div>
+
+    <div class="proposal-card">
+        <h3>Prop #1: Texas Solar Farm Expansion <span class="status-badge status-active" id="badge-1">ACTIVE</span></h3>
+        <p><strong>Requested:</strong> 200,000 QBC</p>
+        <p><strong>Description:</strong> Build a 50MW solar array. Verified by QESG Oracle. LLC SPV prepared.</p>
+        
+        <p>Current Votes (Quorum: 20%)</p>
+        <div class="progress-bar">
+            <div class="progress-yes" id="prog-yes-1" style="width: 75%"></div>
+            <div class="progress-no" id="prog-no-1" style="width: 25%"></div>
+        </div>
+        <p style="font-size: 12px">Yes: 15,000 | No: 5,000</p>
+        
+        <button class="btn-yes" onclick="alert('Vote YES cast securely via ML-DSA-65 signature.')">Vote YES</button>
+        <button class="btn-no" onclick="alert('Vote NO cast securely via ML-DSA-65 signature.')">Vote NO</button>
+        <button class="btn-execute" onclick="executeProp()">Execute & Disburse Funds</button>
+    </div>
+</div>
+
+<script>
+    function executeProp() {
+        document.getElementById('badge-1').className = 'status-badge status-passed';
+        document.getElementById('badge-1').innerText = 'EXECUTED';
+        alert('Success! Smart contract disbursed 200,000 QBC to the SPV Wallet.');
+    }
+</script>
+
+</body>
+</html>

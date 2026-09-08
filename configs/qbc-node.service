@@ -1,0 +1,45 @@
+# systemd service unit for QubitsCoin node
+# ─────────────────────────────────────────────────────────────────────────────
+# Install:
+#   sudo cp configs/qbc-node.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now qbc-node
+#
+# Logs:
+#   journalctl -u qbc-node -f
+
+[Unit]
+Description=QubitsCoin (QBC) Full Node
+Documentation=https://github.com/qbc-qubitscoin/qubitscoin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qbc
+Group=qbc
+
+# Binary location (adjust if installed elsewhere).
+ExecStart=/usr/local/bin/qbc-node start \
+    --config /etc/qbc/config.toml \
+    --datadir /var/lib/qbc
+
+# Keystore password — loaded from a credentials file readable only by the qbc user.
+# Create it with: echo "your-password" | sudo tee /etc/qbc/keystore.password
+# sudo chown qbc:qbc /etc/qbc/keystore.password && sudo chmod 400 /etc/qbc/keystore.password
+EnvironmentFile=-/etc/qbc/environment
+
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+# Security hardening.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/qbc
+ProtectHome=read-only
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
