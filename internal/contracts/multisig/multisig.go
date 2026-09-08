@@ -1,4 +1,4 @@
-package main
+package multisig
 
 import (
 	"bytes"
@@ -27,11 +27,11 @@ var (
 	// owners are stored as "owner_0", "owner_1", etc.
 )
 
-// init_multisig initializes the M-of-N multisig wallet.
+// InitMultisig initializes the M-of-N multisig wallet.
 // Payload format: [threshold uint32] [owner_count uint32] [pubkey1 1952 bytes] [pubkey2 1952 bytes] ...
 //export init_multisig
-func init_multisig(payloadPtr, payloadLen uint32) int32 {
-	payload := ptrToBytes(payloadPtr, payloadLen)
+func InitMultisig(payloadPtr, payloadLen uint32) int32 {
+	payload := PtrToBytes(payloadPtr, payloadLen)
 	if len(payload) < 8 {
 		return -1 // Invalid payload
 	}
@@ -45,26 +45,26 @@ func init_multisig(payloadPtr, payloadLen uint32) int32 {
 	}
 
 	// Write threshold and owner count to state
-	writeState(KeyThreshold, payload[0:4])
-	writeState(KeyOwners, payload[4:8])
+	WriteState(KeyThreshold, payload[0:4])
+	WriteState(KeyOwners, payload[4:8])
 
 	// Write each owner's public key
 	offset := uint32(8)
 	for i := uint32(0); i < ownerCount; i++ {
 		keyName := append([]byte("owner_"), byte(i))
 		pubKey := payload[offset : offset+1952]
-		writeState(keyName, pubKey)
+		WriteState(keyName, pubKey)
 		offset += 1952
 	}
 
 	return 0
 }
 
-// execute_transfer proposes/executes a transfer.
+// ExecuteTransfer proposes/executes a transfer.
 // Payload format: [to_address 32 bytes] [amount uint64] [num_signatures uint32] [sig1 3309 bytes] [sig2 3309 bytes] ...
 //export execute_transfer
-func execute_transfer(payloadPtr, payloadLen uint32) int32 {
-	payload := ptrToBytes(payloadPtr, payloadLen)
+func ExecuteTransfer(payloadPtr, payloadLen uint32) int32 {
+	payload := PtrToBytes(payloadPtr, payloadLen)
 	if len(payload) < 44 {
 		return -1
 	}
@@ -79,7 +79,7 @@ func execute_transfer(payloadPtr, payloadLen uint32) int32 {
 	}
 
 	// Read threshold
-	threshBytes, err := readState(KeyThreshold, 4)
+	threshBytes, err := ReadState(KeyThreshold, 4)
 	if err != nil {
 		return -3
 	}
@@ -90,7 +90,7 @@ func execute_transfer(payloadPtr, payloadLen uint32) int32 {
 	}
 
 	// Read owner count
-	ownerCountBytes, err := readState(KeyOwners, 4)
+	ownerCountBytes, err := ReadState(KeyOwners, 4)
 	if err != nil {
 		return -5
 	}
@@ -109,9 +109,9 @@ func execute_transfer(payloadPtr, payloadLen uint32) int32 {
 		
 		for o := uint32(0); o < ownerCount; o++ {
 			keyName := append([]byte("owner_"), byte(o))
-			pubKey, err := readState(keyName, 1952)
+			pubKey, err := ReadState(keyName, 1952)
 			if err == nil {
-				if verifySig(pubKey, msgToSign, sig) {
+				if VerifySig(pubKey, msgToSign, sig) {
 					validSigs++
 					break // Sig matches this owner
 				}
@@ -125,7 +125,7 @@ func execute_transfer(payloadPtr, payloadLen uint32) int32 {
 	}
 
 	// Signatures valid, execute transfer
-	if success := doTransfer(toAddr, amount); !success {
+	if success := DoTransfer(toAddr, amount); !success {
 		return -7
 	}
 
@@ -134,28 +134,24 @@ func execute_transfer(payloadPtr, payloadLen uint32) int32 {
 
 // --- Helper Functions ---
 
-func ptrToBytes(ptr, len uint32) []byte {
+var PtrToBytes = func(ptr, len uint32) []byte {
 	return make([]byte, len) 
 }
 
-func writeState(key, val []byte) {
+var WriteState = func(key, val []byte) {
 }
 
-type dummyError struct{}
-func (e dummyError) Error() string { return "error" }
-
-func readState(key []byte, maxLen uint32) ([]byte, error) {
+var ReadState = func(key []byte, maxLen uint32) ([]byte, error) {
 	val := make([]byte, maxLen)
 	return val, nil
 }
 
-func verifySig(pubKey, msg, sig []byte) bool {
+var VerifySig = func(pubKey, msg, sig []byte) bool {
 	return bytes.Equal(pubKey, sig[:len(pubKey)]) // mock logic
 }
 
-func doTransfer(to []byte, amount uint64) bool {
+var DoTransfer = func(to []byte, amount uint64) bool {
 	if amount == 0 { return false }
 	return true
 }
 
-func main() {}

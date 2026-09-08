@@ -232,10 +232,10 @@ func applyCall(
 		nameLen := int(tx.Data[0])
 		if nameLen > 0 && len(tx.Data) >= 1+nameLen {
 			funcName = string(tx.Data[1 : 1+nameLen])
-		}
-		rest := tx.Data[1+nameLen:]
-		for i := 0; i+8 <= len(rest); i += 8 {
-			params = append(params, binary.BigEndian.Uint64(rest[i:]))
+			rest := tx.Data[1+nameLen:]
+			for i := 0; i+8 <= len(rest); i += 8 {
+				params = append(params, binary.BigEndian.Uint64(rest[i:]))
+			}
 		}
 	}
 

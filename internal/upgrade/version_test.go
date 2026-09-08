@@ -22,7 +22,7 @@ func TestParseVersion_WithoutV(t *testing.T) {
 	}
 }
 
-func TestParseVersion_Invalid(t *testing.T) {
+func TestParseVersion_Invalid2(t *testing.T) {
 	cases := []string{"", "1.2", "abc", "1.2.x", "1.2.3.4"}
 	for _, c := range cases {
 		if _, err := ParseVersion(c); err == nil {
@@ -31,14 +31,14 @@ func TestParseVersion_Invalid(t *testing.T) {
 	}
 }
 
-func TestVersion_String(t *testing.T) {
+func TestVersion_String2(t *testing.T) {
 	v := Version{1, 2, 3}
 	if s := v.String(); s != "v1.2.3" {
 		t.Errorf("String: want v1.2.3, got %s", s)
 	}
 }
 
-func TestVersion_After(t *testing.T) {
+func TestVersion_After2(t *testing.T) {
 	cases := []struct {
 		a, b  Version
 		after bool
@@ -57,7 +57,7 @@ func TestVersion_After(t *testing.T) {
 	}
 }
 
-func TestVersion_Equal(t *testing.T) {
+func TestVersion_Equal2(t *testing.T) {
 	va := Version{1, 2, 3}
 	vb := Version{1, 2, 3}
 	vc := Version{1, 2, 4}
