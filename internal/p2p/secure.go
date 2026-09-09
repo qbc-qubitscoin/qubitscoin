@@ -21,13 +21,18 @@ type SecureConn struct {
 	recvSeq uint64
 }
 
+var (
+	newCipherFunc = aes.NewCipher
+	newGCMFunc    = cipher.NewGCM
+)
+
 // NewSecureConn creates a SecureConn from a raw connection and a 32-byte session key.
 func NewSecureConn(conn net.Conn, sessionKey [32]byte) (*SecureConn, error) {
-	block, err := aes.NewCipher(sessionKey[:])
+	block, err := newCipherFunc(sessionKey[:])
 	if err != nil {
 		return nil, err
 	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := newGCMFunc(block)
 	if err != nil {
 		return nil, err
 	}

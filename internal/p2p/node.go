@@ -15,8 +15,9 @@ import (
 const (
 	defaultMaxPeers = 25
 	dialTimeout     = 10 * time.Second
-	pingInterval    = 30 * time.Second
 )
+
+var pingInterval = 30 * time.Second
 
 // Node is the top-level P2P network participant.
 type Node struct {
@@ -74,10 +75,7 @@ func (n *Node) Connect(ctx context.Context, addr string) error {
 	remotePeerInfo := &PeerInfo{ListenAddr: addr}
 	sc, err := InitiatorHandshake(conn, n.identity, remotePeerInfo)
 	if err != nil {
-		err := conn.Close()
-		if err != nil {
-			return err
-		}
+		_ = conn.Close()
 		return err
 	}
 
@@ -155,7 +153,7 @@ func (n *Node) broadcast(msg *GossipMsg) {
 	if msg.Hops >= maxGossipHops {
 		return
 	}
-	data, err := gobEncode(msg)
+	data, err := gobEncodeFunc(msg)
 	if err != nil {
 		return
 	}
@@ -266,7 +264,7 @@ func (n *Node) sendPeerList(p *Peer) {
 		return
 	}
 	pl := PeerListPayload{Peers: peers}
-	data, err := gobEncode(pl)
+	data, err := gobEncodeFunc(pl)
 	if err != nil {
 		return
 	}
@@ -290,10 +288,7 @@ func (n *Node) pingLoop(ctx context.Context) {
 			binary.BigEndian.PutUint64(ping[1:], uint64(time.Now().UnixNano()))
 			n.peersMu.RLock()
 			for _, p := range n.peers {
-				err := p.Send(ping)
-				if err != nil {
-					return
-				}
+				_ = p.Send(ping)
 			}
 			n.peersMu.RUnlock()
 		}

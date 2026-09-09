@@ -12,6 +12,12 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+var (
+	createTemp = os.CreateTemp
+	chmod      = os.Chmod
+	closeFile  = func(f *os.File) error { return f.Close() }
+)
+
 // Download fetches a release binary, streams it to a temp file in the same
 // directory as the running executable, and verifies its SHA-3-256 checksum.
 // Returns the path of the verified temp file.
@@ -20,13 +26,13 @@ import (
 func Download(ctx context.Context, rel *Release) (string, error) {
 	// Resolve destination directory (same as the running binary so that an
 	// atomic rename later stays on the same filesystem / partition).
-	exePath, err := os.Executable()
+	exePath, err := osExecutable()
 	if err != nil {
 		return "", fmt.Errorf("resolve executable path: %w", err)
 	}
 	exeDir := filepath.Dir(exePath)
 
-	tmp, err := os.CreateTemp(exeDir, "node-upgrade-*.tmp")
+	tmp, err := createTemp(exeDir, "node-upgrade-*.tmp")
 	if err != nil {
 		return "", fmt.Errorf("create a temp file: %w", err)
 	}
@@ -36,14 +42,8 @@ func Download(ctx context.Context, rel *Release) (string, error) {
 	success := false
 	defer func() {
 		if !success {
-			err := tmp.Close()
-			if err != nil {
-				return
-			}
-			err = os.Remove(tmpPath)
-			if err != nil {
-				return
-			}
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
 		}
 	}()
 
@@ -59,12 +59,7 @@ func Download(ctx context.Context, rel *Release) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("download binary: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(resp.Body)
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
@@ -76,7 +71,7 @@ func Download(ctx context.Context, rel *Release) (string, error) {
 	if _, err := io.Copy(w, resp.Body); err != nil {
 		return "", fmt.Errorf("write binary: %w", err)
 	}
-	if err := tmp.Close(); err != nil {
+	if err := closeFile(tmp); err != nil {
 		return "", fmt.Errorf("flush temp file: %w", err)
 	}
 
@@ -89,7 +84,7 @@ func Download(ctx context.Context, rel *Release) (string, error) {
 	}
 
 	// Make the temp file executable.
-	if err := os.Chmod(tmpPath, 0o755); err != nil {
+	if err := chmod(tmpPath, 0o755); err != nil {
 		return "", fmt.Errorf("chmod: %w", err)
 	}
 
@@ -103,12 +98,7 @@ func ComputeFileHash(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func(f *os.File) {
-		err := f.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(f)
+	defer f.Close()
 	h := sha3.New256()
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err

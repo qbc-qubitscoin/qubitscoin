@@ -17,6 +17,7 @@ func newTCPServer(local *Identity) (*tcpServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	local.ListenAddr = ln.Addr().String()
 	return &tcpServer{listener: ln, local: local}, nil
 }
 
@@ -24,10 +25,7 @@ func newTCPServer(local *Identity) (*tcpServer, error) {
 func (s *tcpServer) acceptLoop(ctx context.Context, onPeer func(*Peer)) {
 	go func() {
 		<-ctx.Done()
-		err := s.listener.Close()
-		if err != nil {
-			return
-		}
+		_ = s.listener.Close()
 	}()
 	for {
 		conn, err := s.listener.Accept()
