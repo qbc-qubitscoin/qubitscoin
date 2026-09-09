@@ -1,71 +1,114 @@
-# Developer Note 07: Web UI, Block Explorer & Node Dashboard
+# Developer Note 07: Universal React + TypeScript UI & Embedded Web Server
 
-## 1. Why an Embedded Web Dashboard is Built Into QBC
+## 1. Why a Universal React + TypeScript Architecture
 
-Traditional blockchain nodes require running a separate web server, configuring reverse proxies, or downloading bulky desktop apps just to inspect local node status or submit a transaction.
+As the QubitsCoin ecosystem scales with post-quantum cryptography, Wazero smart contracts, and real-time node telemetry, the web interface requires enterprise-grade modularity, type safety, and automated component verification.
 
-QubitsCoin provides an **embedded, zero-configuration Web Portal** directly out of the node binary:
-- **Zero Dependencies**: Uses pure Go `embed.FS` to bundle HTML5/CSS3/JavaScript directly into the compiled binary.
-- **Unified Port**: Served directly on the node's HTTP server (`http://127.0.0.1:8545/ui/` and `/dashboard`), sharing the same port as the JSON-RPC engine.
-- **Quantum-Safe Wallet**: Allows generating ML-DSA-65 keys and submitting post-quantum transactions directly from the browser.
-- **DeFi & Governance Portal**: Native interface for QubitSwap AMM, GreenDAO governance proposals, and CarbonX ESG credits.
+### Key Architectural Pillars
+- **Strict TypeScript 5 & React 18**: Complete type coverage mirroring QBC core Go structures (`ChainInfo`, `BlockInfo`, `TransactionInfo`, `FeeEstimate`).
+- **Test-Driven Development (TDD)**: Every client method and UI component is backed by Vitest and React Testing Library unit tests before implementation.
+- **Embedded Zero-Configuration Delivery**: Vite compiles production bundles directly into `internal/web/static/`, allowing the Go node binary to bundle and serve the entire SPA via pure Go `embed.FS` with zero runtime dependencies.
+- **Universal Development**: Can be developed standalone (`npm run dev` with hot module reloading) or accessed directly through any active node at `http://127.0.0.1:8545/ui/` and `/dashboard`.
 
 ---
 
-## 2. How the Embedded Web Server Works
+## 2. Directory & Component Structure
 
-Located in `internal/web/server.go`:
-```go
-//go:embed static/*
-var staticFS embed.FS
+```text
+web/
+├── package.json               # Vite, React 18, TypeScript, Vitest, Testing Library
+├── tsconfig.json              # Strict TypeScript configuration (bundler resolution)
+├── vite.config.ts             # Vite build pipeline targeting ../internal/web/static
+├── index.html                 # Single-page app root with theme FOUC prevention
+└── src/
+    ├── main.tsx               # React DOM entry point
+    ├── App.tsx                # App root, active tab state, theme manager, node poller
+    ├── App.css                # Glassmorphism dark/light CSS with color-scheme support
+    ├── types/
+    │   └── rpc.ts             # TypeScript interfaces for JSON-RPC 2.0 requests & data models
+    ├── services/
+    │   └── rpcClient.ts       # Typed QBCClient with single & batch dispatch, RPCError
+    ├── components/
+    │   ├── Header.tsx         # Node liveness indicator, height pill, theme toggle
+    │   ├── Tabs.tsx           # Tab navigation (Dashboard, Explorer, Wallet, AMM, DAO, ESG, RPC)
+    │   ├── DashboardTab.tsx   # Live node metrics (Height, Validators, BaseFee, Gas target)
+    │   ├── ExplorerTab.tsx    # Search blocks by height/hash, inspect transactions
+    │   ├── WalletTab.tsx      # NIST ML-DSA-65 post-quantum address generator & transfers
+    │   ├── DexTab.tsx         # QubitSwap constant product AMM ($x \cdot y = k$) calculator
+    │   ├── GreenDaoTab.tsx    # Environmental quadratic governance voting
+    │   ├── CarbonXTab.tsx     # ESG carbon offset credit registry & permanent retirement
+    │   └── RpcConsoleTab.tsx  # Interactive JSON-RPC 2.0 console with pre-filled templates
+    └── test/
+        ├── setup.ts           # Vitest environment setup (@testing-library/jest-dom)
+        ├── rpcClient.test.ts  # TDD tests for typed RPC client & batch calls
+        └── components.test.tsx# TDD tests for React UI components & interactions
+```
 
-func Handler() http.Handler {
-    sub, _ := fs.Sub(staticFS, "static")
-    fileServer := http.FileServer(http.FS(sub))
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        if r.Method != http.MethodGet && r.Method != http.MethodHead {
-            http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-            return
-        }
-        fileServer.ServeHTTP(w, r)
-    })
+---
+
+## 3. Typed JSON-RPC 2.0 Client (`services/rpcClient.ts`)
+
+The `QBCClient` class provides type-safe methods over the node's JSON-RPC 2.0 engine:
+
+```typescript
+export class QBCClient {
+  constructor(endpoint: string = 'http://localhost:8545')
+  async getChainInfo(): Promise<ChainInfo>
+  async getBlockByHeight(height: number): Promise<BlockInfo>
+  async getBlockByHash(hash: string): Promise<BlockInfo>
+  async getBalance(address: string): Promise<string>
+  async getTransactionCount(address: string): Promise<number>
+  async sendRawTransaction(rawHex: string): Promise<string>
+  async getFeeEstimate(): Promise<FeeEstimate>
+  async getGasPrice(): Promise<number>
+  async dispatchBatch(calls: { method: string; params: any[] }[]): Promise<any[]>
 }
 ```
 
-### Route Multiplexing in `internal/rpc/server.go`:
-- `POST /`: Dispatches to JSON-RPC 2.0 handler (`handleRPC`).
-- `GET /ui/`: Serves embedded static web assets (`Handler()`).
-- `GET /dashboard`: Redirects (HTTP 302) to `/ui/`.
-- `GET /healthz`: Returns `200 ok` for container liveness and health probes.
-- `GET /`: Returns `405 Method Not Allowed` for RPC protocol conformance.
+### Error Handling & Protocol Conformance
+- If the node responds with `{ "error": { "code": -32601, "message": "Method not found" } }`, `dispatch` parses the error and throws an instance of `RPCError`.
+- Network and HTTP errors (non-200 responses) throw informative network errors.
+- Dynamic endpoint switching allows pointing the dashboard at remote testnet or mainnet nodes without page reload.
 
 ---
 
-## 3. Web Application Components & Features
+## 4. Modern Web Guidance & Styling Architecture
 
-### 1. Real-Time Network Dashboard
-- Queries `qbc_chainInfo` every 2 seconds.
-- Displays:
-  - Current Block Height & Tip Block Hash
-  - EIP-1559 Dynamic Base Fee (qubits & QBC)
-  - Mempool Pending Transaction Count
-  - Connected P2P Peer Count
-  - Total Fee Burned & Block Reward Subsidies
+The UI adheres strictly to modern web standards:
+- **`color-scheme: light dark`**: Native OS theme inheritance with smooth fallback.
+- **FOUC Prevention**: Inline `<script>` in `index.html` loads saved theme from `localStorage` before the first paint.
+- **Accessible ARIA Semantics**: Form controls, tab lists, and status indicators have explicit `role`, `aria-selected`, `aria-label`, and keyboard focus styles.
+- **Design Tokens**: Defined in CSS variables (`--bg-primary`, `--bg-card`, `--accent-cyan`, `--border-color`), using subtle Glassmorphism backdrop filters for a futuristic quantum appearance.
 
-### 2. Block & Transaction Explorer
-- Interactive search box: Look up any block by height or 64-character hash (`qbc_blockByHeight`, `qbc_blockByHash`).
-- Inspects block headers: `PrevHash`, `MerkleRoot`, `StateRoot`, `ValidatorAddr`, `GasUsed`, `Timestamp`.
-- Displays transaction table with sender, recipient, amount, and fee tips.
+---
 
-### 3. Quantum-Safe Web Wallet
-- Generates post-quantum ML-DSA-65 key pairs.
-- Derives 32-byte address using SHA-3-256:
-  $$\text{Address} = \text{SHA-3-256}(\text{PublicKey})$$
-- Inspects account balance and nonce via `qbc_getBalance` and `qbc_getTransactionCount`.
-- Transfer dispatcher with dynamic fee tier recommendations from `qbc_feeEstimate`.
+## 5. Automated Testing & Verification
 
-### 4. DeFi & Contracts Portal
-- **QubitSwap AMM**: Live liquidity pool reserves, swap simulator with constant product $x \cdot y = k$ and 0.3% fee.
-- **GreenDAO**: Proposal browser with 20% quorum meter and voting action.
-- **CarbonX ESG**: Verified carbon credit registry and retirement certificate generator.
-- **RPC Console**: Interactive JSON-RPC 2.0 debugging shell.
+### Vitest & React Testing Library (Frontend)
+Run the complete frontend test suite:
+```bash
+cd web
+npm test
+```
+- Tests JSON-RPC client responses, error cases, batching, and endpoint mutations.
+- Tests React component state transitions, block searching, wallet generation, AMM arithmetic, governance voting, and RPC execution.
+
+### Go Web Server Testing (`internal/web`)
+The embedded Go server continues to be tested with 100% statement coverage:
+```bash
+go test -v ./internal/web
+```
+- Tests root `/` serving `index.html`.
+- Tests head request handling, `405 Method Not Allowed` on POST, and `404 Not Found` on non-existent assets.
+
+---
+
+## 6. Build & Deployment Workflow
+
+To build and package the React frontend into the Go binary:
+1. `cd web`
+2. `npm run build`
+   - Compiles TypeScript and runs Vite bundler.
+   - Emits optimized single-page assets directly into `internal/web/static/`.
+3. Re-run `go test ./internal/web` to ensure embed compatibility.
+4. When compiling `cmd/node`, `embed.FS` packages the built React SPA directly inside the resulting executable.
