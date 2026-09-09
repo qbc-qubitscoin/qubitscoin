@@ -51,6 +51,29 @@ func TestRPCServer_HTTPError(t *testing.T) {
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("expected 405, got %d", resp.StatusCode)
 	}
+
+	// Test GET /ui/ returns 200 OK
+	uiResp, err := http.Get(ts.URL + "/ui/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if uiResp.StatusCode != http.StatusOK {
+		t.Errorf("GET /ui/: want 200, got %d", uiResp.StatusCode)
+	}
+
+	// Test GET /dashboard redirects to /ui/
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse // don't follow redirect so we can inspect status
+		},
+	}
+	dashResp, err := client.Get(ts.URL + "/dashboard")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dashResp.StatusCode != http.StatusFound {
+		t.Errorf("GET /dashboard: want 302, got %d", dashResp.StatusCode)
+	}
 	
 	// Test bad JSON
 	resp2, _ := http.Post(ts.URL, "application/json", bytes.NewReader([]byte("{bad json")))

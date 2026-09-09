@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/qbc-qubitscoin/qubitscoin/internal/metrics"
+	"github.com/qbc-qubitscoin/qubitscoin/internal/web"
 )
 
 const maxRequestBody = 4 << 20 // 4 MiB
@@ -36,6 +37,10 @@ func NewServer(addr string, api *API, readTimeout, writeTimeout time.Duration) *
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+	mux.Handle("/ui/", http.StripPrefix("/ui", web.Handler()))
+	mux.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusFound)
 	})
 
 	s.http = &http.Server{
