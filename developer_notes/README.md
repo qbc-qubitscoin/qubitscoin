@@ -14,6 +14,7 @@ Welcome to the **QubitsCoin Developer Notes** folder. This directory contains th
 | [`04_CONSENSUS_ENGINE.md`](file:///C:/workspace/repo/qubitscoin/developer_notes/04_CONSENSUS_ENGINE.md) | Consensus | Deterministic round-robin proposer selection, BFT quorum voting, 2-second block intervals, and state commit pipeline |
 | [`05_SMART_CONTRACTS_AND_VM.md`](file:///C:/workspace/repo/qubitscoin/developer_notes/05_SMART_CONTRACTS_AND_VM.md) | WebAssembly VM & DeFi | Wazero pure-Go WASM host runtime, gas metering, storage slots, QubitSwap AMM ($x \cdot y = k$), Lending, CarbonX ESG, GreenDAO, and QubitID |
 | [`06_NETWORKING_AND_RPC.md`](file:///C:/workspace/repo/qubitscoin/developer_notes/06_NETWORKING_AND_RPC.md) | P2P & JSON-RPC | Frame wire protocol, AES-256-GCM secure connections, priority Mempool heap, and JSON-RPC 2.0 dispatch engine |
+| [`07_UI_AND_WEB_DASHBOARD.md`](file:///C:/workspace/repo/qubitscoin/developer_notes/07_UI_AND_WEB_DASHBOARD.md) | Web UI & Explorer | Embedded pure-Go HTTP web server, network dashboard, block explorer, quantum wallet, and DeFi hub |
 
 ---
 
