@@ -163,3 +163,17 @@ func TestStateDB_ForEach_InvalidKey(t *testing.T) {
 		t.Errorf("ForEach visited %d accounts, expected 1", count)
 	}
 }
+
+func TestStateDB_Apply_SelfAndNil(t *testing.T) {
+	st := NewStateDB()
+	addr := makeAddr(1)
+	st.Credit(addr, 500)
+	st.Apply(st)
+	if st.GetBalance(addr) != 500 {
+		t.Fatal("self apply corrupted state")
+	}
+	st.Apply(nil)
+	if st.GetBalance(addr) != 500 {
+		t.Fatal("nil apply corrupted state")
+	}
+}
