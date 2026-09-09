@@ -141,4 +141,28 @@ func TestPeekAddress_Extended_Errors(t *testing.T) {
 	if err == nil {
 		t.Error("expected error for bad json")
 	}
+
+	// 3. valid file
+	validWallet, _ := crypto.NewWallet()
+	validPath := filepath.Join(tmp, "valid.json")
+	keystore.Encrypt(validPath, "pw", validWallet)
+	addr, err := keystore.PeekAddress(validPath)
+	if err != nil {
+		t.Errorf("expected no error for valid file, got %v", err)
+	}
+	if addr != crypto.AddressToHex(validWallet.Address) {
+		t.Errorf("address mismatch")
+	}
+}
+
+func TestDecrypt_Extended_WrongPassword(t *testing.T) {
+	tmp := t.TempDir()
+	validWallet, _ := crypto.NewWallet()
+	validPath := filepath.Join(tmp, "valid.json")
+	keystore.Encrypt(validPath, "pw", validWallet)
+
+	_, err := keystore.Decrypt(validPath, "wrong")
+	if err == nil {
+		t.Error("expected error for wrong password")
+	}
 }

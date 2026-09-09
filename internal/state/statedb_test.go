@@ -147,3 +147,19 @@ func TestStateDB_CommitRoot_EmptyIsConsistent(t *testing.T) {
 		t.Fatal("two empty state DBs should have the same root")
 	}
 }
+
+func TestStateDB_ForEach_InvalidKey(t *testing.T) {
+	st := NewStateDB()
+	st.accounts["not_hex_!@#$"] = &Account{Balance: 1}
+	
+	addr := makeAddr(99)
+	st.SetAccount(addr, &Account{Balance: 100})
+	
+	count := 0
+	st.ForEach(func(a [crypto.AddressSize]byte, acc *Account) {
+		count++
+	})
+	if count != 1 {
+		t.Errorf("ForEach visited %d accounts, expected 1", count)
+	}
+}

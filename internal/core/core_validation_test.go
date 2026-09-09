@@ -76,3 +76,40 @@ func TestCore_GenesisStateRootSort(t *testing.T) {
 		t.Errorf("expected non-empty root for empty allocs")
 	}
 }
+
+func TestCore_NextBaseFee_SmallCurrent(t *testing.T) {
+	// current = 1 means current / MaxBaseFeeChangeDenom == 0 -> triggers maxDelta = 1
+	target := TargetBlockGas()
+	next := NextBaseFee(1, target+1000)
+	if next != 2 {
+		t.Errorf("expected next base fee 2, got %d", next)
+	}
+
+	// delta == 0 -> triggers delta = 1
+	next2 := NextBaseFee(100, target+1)
+	if next2 != 101 {
+		t.Errorf("expected next base fee 101, got %d", next2)
+	}
+
+	// under target with current = 1 -> delta >= current - MinBaseFee (0 >= 0)
+	next3 := NextBaseFee(1, target-1000)
+	if next3 != MinBaseFee {
+		t.Errorf("expected MinBaseFee, got %d", next3)
+	}
+
+	// over > target -> triggers delta > maxDelta
+	next5 := NextBaseFee(1000, target*3)
+	if next5 <= 1000 {
+		t.Errorf("expected capped base fee increase, got %d", next5)
+	}
+}
+
+func TestCore_Transaction_Verify_CryptoError(t *testing.T) {
+	w, _ := crypto.NewWallet()
+	tx := NewTransfer(w.Address, w.Address, w.PublicKey, 1, 10, MinGasPrice)
+	// Invalid signature length will cause crypto.Verify to return an error
+	tx.Signature = []byte("short-sig")
+	if err := tx.Verify(); err == nil {
+		t.Fatal("expected error from crypto.Verify with short signature, got nil")
+	}
+}

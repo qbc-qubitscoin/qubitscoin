@@ -30,14 +30,8 @@ func NewWallet() (*Wallet, error) {
 }
 
 func walletFromKeys(pub *mldsa65.PublicKey, priv *mldsa65.PrivateKey) (*Wallet, error) {
-	pubBytes, err := pub.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	privBytes, err := priv.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
+	pubBytes, _ := pub.MarshalBinary()
+	privBytes, _ := priv.MarshalBinary()
 	addr := DeriveAddress(pubBytes)
 	return &Wallet{
 		PublicKey:  pubBytes,

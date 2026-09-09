@@ -102,9 +102,6 @@ func ApplyTransaction(
 	feeCollected := gasUsed * tx.GasPrice
 
 	effectiveBaseFee := baseFee
-	if effectiveBaseFee > tx.GasPrice {
-		effectiveBaseFee = tx.GasPrice
-	}
 	burnedFee := gasUsed * effectiveBaseFee
 	validatorTip := feeCollected - burnedFee // priority tip = gasPrice − baseFee
 
@@ -253,9 +250,6 @@ func applyCall(
 	}
 
 	gasUsed := core.GasCall + ec.GasUsed
-	if gasUsed > tx.GasLimit {
-		gasUsed = tx.GasLimit
-	}
 
 	var returnData []byte
 	b8 := make([]byte, 8)

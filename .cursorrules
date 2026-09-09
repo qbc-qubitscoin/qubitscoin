@@ -1,0 +1,21 @@
+# QubitsCoin Developer Rules & AI Guidelines
+
+## Core Principles
+1. TEST-DRIVEN DEVELOPMENT (TDD) FIRST:
+   - Always write tests BEFORE implementing or modifying logic.
+   - Run tests to see them fail, then write minimal code to make them pass.
+   - Maintain 100% test coverage across all internal packages.
+
+2. DEVELOPER NOTES REQUIREMENT:
+   - For every new feature, contract, or architecture change, create or update documentation in `developer_notes/`.
+   - Explicitly detail WHY the logic was chosen, HOW the state transitions work, and what mathematical INVARIANTS are maintained.
+
+3. REPOSITORY HYGIENE:
+   - Never create or commit temporary test binaries, coverage profiles, or scratch files in root.
+   - All tests must be self-contained in `*_test.go` files inside their respective packages.
+   - Keep `.gitignore` strictly obeyed.
+
+4. ENVIRONMENT CONSTRAINTS:
+   - The project runs in a pure Go environment with CGO disabled (`CGO_ENABLED=0`).
+   - Do not invoke `go test -race` (requires CGO).
+   - In PowerShell, always quote flags with equals signs (e.g. `"-coverprofile=coverage.out"`).

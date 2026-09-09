@@ -13,6 +13,11 @@
 # Output of the go coverage tool
 *.out
 *.prof
+coverage*
+cover*
+*.html
+*.wasm
+test_*.go
 
 # Dependency directories
 vendor/

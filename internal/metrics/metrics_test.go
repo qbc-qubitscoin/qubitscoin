@@ -107,3 +107,9 @@ func TestServe_StartsAndResponds(t *testing.T) {
 
 	_ = addr // suppress lint
 }
+
+func TestServe_Error(t *testing.T) {
+	ctx := context.Background()
+	// An invalid address will cause ListenAndServe to fail immediately with an error
+	Serve(ctx, "999.999.999.999:99999")
+}

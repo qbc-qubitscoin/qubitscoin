@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+var computeFileHashFunc = ComputeFileHash
+
 // Config holds all settings for the upgrade manager.
 type Config struct {
 	// ReleaseURL is the GitHub Releases API endpoint.
@@ -127,7 +129,7 @@ func (m *Manager) applyRelease(ctx context.Context, rel *Release) {
 
 		// Re-verify on-disk checksum before replacing the binary (defence-in-depth).
 		if rel.Checksum != "" {
-			onDisk, hashErr := ComputeFileHash(tmpPath)
+			onDisk, hashErr := computeFileHashFunc(tmpPath)
 			if hashErr != nil {
 				log.Printf("[upgrade] on-disk hash error: %v — aborting", hashErr)
 				_ = os.Remove(tmpPath)

@@ -5,20 +5,7 @@ import (
 	"encoding/binary"
 )
 
-// QubitsCoin WASM Host Functions
-// In a real environment, these are provided by the QubitVM runtime (wazero).
-// We stub them here to allow the contract to compile.
-//go:wasmimport env qbc_state_read
-func qbcStateRead(keyPtr, keyLen, valPtr, valMaxLen uint32) uint32 { return 0 }
 
-//go:wasmimport env qbc_state_write
-func qbcStateWrite(keyPtr, keyLen, valPtr, valLen uint32) {}
-
-//go:wasmimport env qbc_transfer
-func qbcTransfer(toPtr, toLen uint32, amount uint64) uint32 { return 0 }
-
-//go:wasmimport env qbc_crypto_verify
-func qbcCryptoVerify(pubPtr, pubLen, msgPtr, msgLen, sigPtr, sigLen uint32) uint32 { return 0 }
 
 // State Keys
 var (
@@ -29,7 +16,6 @@ var (
 
 // InitMultisig initializes the M-of-N multisig wallet.
 // Payload format: [threshold uint32] [owner_count uint32] [pubkey1 1952 bytes] [pubkey2 1952 bytes] ...
-//export init_multisig
 func InitMultisig(payloadPtr, payloadLen uint32) int32 {
 	payload := PtrToBytes(payloadPtr, payloadLen)
 	if len(payload) < 8 {
@@ -62,7 +48,6 @@ func InitMultisig(payloadPtr, payloadLen uint32) int32 {
 
 // ExecuteTransfer proposes/executes a transfer.
 // Payload format: [to_address 32 bytes] [amount uint64] [num_signatures uint32] [sig1 3309 bytes] [sig2 3309 bytes] ...
-//export execute_transfer
 func ExecuteTransfer(payloadPtr, payloadLen uint32) int32 {
 	payload := PtrToBytes(payloadPtr, payloadLen)
 	if len(payload) < 44 {

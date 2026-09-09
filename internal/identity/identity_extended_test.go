@@ -2,7 +2,6 @@ package identity_test
 
 import (
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"strings"
 	"testing"
@@ -35,10 +34,7 @@ func TestIssueKYCCredential_Extended(t *testing.T) {
 		t.Fatal("expected VerifiableCredential, got nil")
 	}
 
-	// Check ProofValue is base64 or valid hex (non-empty)
-	// The implementation currently uses Hex for JWS, but prompt says "Check ProofValue is base64".
-	// Since valid hex is a subset of base64 (without padding), it might decode if length is a multiple of 4.
-	// Or we just check it is non-empty and has only base64 characters.
+	// Check ProofValue is base64 (non-empty)
 	if vc.Proof == nil {
 		t.Fatal("Proof is nil")
 	}
@@ -46,14 +42,10 @@ func TestIssueKYCCredential_Extended(t *testing.T) {
 		t.Error("Proof.JWS is empty")
 	}
 	
-	// Hex check (since it's hex under the hood)
-	_, err = hex.DecodeString(vc.Proof.JWS)
+	// Base64 check
+	_, err = base64.StdEncoding.DecodeString(vc.Proof.JWS)
 	if err != nil {
-		// Try base64 just in case
-		_, errB64 := base64.StdEncoding.DecodeString(vc.Proof.JWS)
-		if errB64 != nil {
-			t.Errorf("Proof.JWS is neither valid hex nor base64. error: %v", err)
-		}
+		t.Errorf("Proof.JWS is not valid base64. error: %v", err)
 	}
 
 	if vc.Proof.VerificationMethod == "" {

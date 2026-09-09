@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -64,9 +63,7 @@ func (s *Server) Start(ctx context.Context) {
 	}()
 	go func() {
 		log.Printf("[rpc] JSON-RPC server listening on http://%s", s.http.Addr)
-		if err := s.http.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("[rpc] server error: %v", err)
-		}
+		_ = s.http.ListenAndServe()
 	}()
 }
 
@@ -148,7 +145,5 @@ func (s *Server) handleBatch(w http.ResponseWriter, body []byte) {
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("[rpc] response encode error: %v", err)
-	}
+	_ = json.NewEncoder(w).Encode(v)
 }

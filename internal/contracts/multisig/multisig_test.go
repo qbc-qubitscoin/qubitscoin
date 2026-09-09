@@ -204,9 +204,4 @@ func TestMockFunctions(t *testing.T) {
 	origDoTransfer(nil, 1)
 	origDoTransfer(nil, 0)
 
-	// Also cover the WASM stubs
-	qbcStateRead(0, 0, 0, 0)
-	qbcStateWrite(0, 0, 0, 0)
-	qbcTransfer(0, 0, 0)
-	qbcCryptoVerify(0, 0, 0, 0, 0, 0)
 }
