@@ -15,7 +15,8 @@
 *.prof
 coverage*
 cover*
-*.html
+coverage*.html
+cover*.html
 *.wasm
 test_*.go
 
