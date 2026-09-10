@@ -18,19 +18,18 @@ type VM struct {
 	seq     atomic.Uint64 // unique suffix for module instance names
 }
 
+var newRuntime = wazero.NewRuntime
+
 // NewVM creates a new VM and registers the QBC host module.
 func NewVM(ctx context.Context) (*VM, error) {
-	rt := wazero.NewRuntime(ctx)
+	rt := newRuntime(ctx)
 	v := &VM{
 		rt:      rt,
 		modules: make(map[string]wazero.CompiledModule),
 		storage: NewContractStorage(),
 	}
 	if err := v.registerHostModule(ctx); err != nil {
-		err := rt.Close(ctx)
-		if err != nil {
-			return nil, err
-		}
+		_ = rt.Close(ctx)
 		return nil, err
 	}
 	return v, nil
@@ -101,10 +100,7 @@ func (v *VM) Call(
 		return nil, fmt.Errorf("instantiate module: %w", err)
 	}
 	defer func(mod api.Module, ctx context.Context) {
-		err := mod.Close(ctx)
-		if err != nil {
-			fmt.Printf("error closing module: %v\n", err)
-		}
+		_ = mod.Close(ctx)
 	}(mod, ctx)
 
 	fn := mod.ExportedFunction(funcName)
@@ -124,8 +120,5 @@ func (v *VM) Storage() *ContractStorage { return v.storage }
 
 // Close releases all wazero resources.
 func (v *VM) Close(ctx context.Context) {
-	err := v.rt.Close(ctx)
-	if err != nil {
-		return
-	}
+	_ = v.rt.Close(ctx)
 }

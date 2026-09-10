@@ -9,6 +9,8 @@ import (
 	"github.com/qbc-qubitscoin/qubitscoin/internal/crypto"
 )
 
+var JsonMarshal = json.Marshal
+
 // VerifiableCredential represents a W3C Verifiable Credential.
 type VerifiableCredential struct {
 	Context           []string               `json:"@context"`
@@ -49,7 +51,7 @@ func IssueKYCCredential(issuerKey []byte, issuerDID, subjectDID, status, riskLev
 		},
 	}
 
-	payload, err := json.Marshal(vc)
+	payload, err := JsonMarshal(vc)
 	if err != nil {
 		return nil, err
 	}

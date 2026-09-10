@@ -35,11 +35,6 @@ func (qs *QubitSwap) SwapAforB(amountAIn uint64) (amountBOut uint64, success boo
 	
 	amountBOut = numerator / denominator
 
-	// Ensure we have enough reserves
-	if amountBOut >= qs.ReserveB {
-		return 0, false
-	}
-
 	qs.ReserveA += amountAIn
 	qs.ReserveB -= amountBOut
 

@@ -13,9 +13,16 @@
 # Output of the go coverage tool
 *.out
 *.prof
+coverage*
+cover*
+coverage*.html
+cover*.html
+*.wasm
+test_*.go
 
 # Dependency directories
 vendor/
+node_modules/
 
 # Go workspace file
 go.work

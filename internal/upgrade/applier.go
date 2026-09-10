@@ -6,6 +6,13 @@ import (
 	"path/filepath"
 )
 
+var (
+	osExecutable = os.Executable
+	evalSymlinks = filepath.EvalSymlinks
+	reExecFunc   = reExec
+	osExit       = os.Exit
+)
+
 // Apply atomically replaces the running executable with newBinaryPath, then
 // re-executes the new binary with the same arguments.
 //
@@ -16,12 +23,12 @@ import (
 //
 // The caller must ensure the newBinaryPath is verified before calling Apply.
 func Apply(newBinaryPath string) error {
-	exePath, err := os.Executable()
+	exePath, err := osExecutable()
 	if err != nil {
 		return fmt.Errorf("resolve executable: %w", err)
 	}
 	// Resolve symlinks so we operate on the real file.
-	exePath, err = filepath.EvalSymlinks(exePath)
+	exePath, err = evalSymlinks(exePath)
 	if err != nil {
 		return fmt.Errorf("eval symlinks: %w", err)
 	}
@@ -43,7 +50,7 @@ func Apply(newBinaryPath string) error {
 
 	// Step 3 — Re-exec the new binary.
 	args := os.Args
-	if err := reExec(exePath, args); err != nil {
+	if err := reExecFunc(exePath, args); err != nil {
 		// Rollback.
 		_ = os.Rename(exePath, newBinaryPath)
 		_ = os.Rename(oldPath, exePath)
@@ -51,13 +58,13 @@ func Apply(newBinaryPath string) error {
 	}
 
 	// reExec does not return on success (POSIX). On Windows we exit here.
-	os.Exit(0)
+	osExit(0)
 	return nil
 }
 
 // cleanOldBinary removes any leftover "<exe>.old" from a previous upgrade.
 func cleanOldBinary() {
-	exePath, err := os.Executable()
+	exePath, err := osExecutable()
 	if err != nil {
 		return
 	}

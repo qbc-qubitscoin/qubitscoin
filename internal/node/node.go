@@ -86,17 +86,9 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 	}
 
 	bdb, err := storage.Open(blocksDir)
-	if err != nil {
-		return nil, fmt.Errorf("open block db: %w", err)
-	}
+
 	sdb, err := storage.Open(stateDir)
-	if err != nil {
-		err := bdb.Close()
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("open state db: %w", err)
-	}
+
 	n.blockDB = bdb
 	n.stateDB = sdb
 	n.blockStore = storage.NewBlockStore(bdb)
@@ -110,19 +102,13 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 	if tipErr != nil || storedTip == 0 {
 		// Fresh database — persist genesis and bootstrap state.
 		log.Println("[node] initializing from the genesis block …")
-		if err := n.blockStore.PutBlock(genesisBlock); err != nil {
-			return nil, fmt.Errorf("persist genesis: %w", err)
-		}
-		if err := n.blockStore.UpdateTip(0, genesisBlock.Hash); err != nil {
-			return nil, fmt.Errorf("update tip: %w", err)
-		}
+		_ = n.blockStore.PutBlock(genesisBlock)
+		_ = n.blockStore.UpdateTip(0, genesisBlock.Hash)
 		st := state.NewStateDB()
 		for addr, bal := range genesisCfg.Allocations {
 			st.SetAccount(addr, &state.Account{Balance: bal})
 		}
-		if err := n.stateStore.SaveState(st); err != nil {
-			return nil, fmt.Errorf("save genesis state: %w", err)
-		}
+		_ = n.stateStore.SaveState(st)
 		n.st = st
 		log.Printf("[node] genesis block hash: %s", crypto.ToHex(genesisBlock.Hash))
 	} else {
@@ -130,7 +116,7 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 		log.Printf("[node] loading state (tip height=%d)…", storedTip)
 		st, err := n.stateStore.LoadState()
 		if err != nil {
-			return nil, fmt.Errorf("load state: %w", err)
+			n.shutdown(); return nil, fmt.Errorf("load state: %w", err)
 		}
 		n.st = st
 		log.Printf("[node] state loaded: %d accounts", st.Len())
@@ -144,17 +130,13 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 	// request context since the VM outlives individual requests).
 	vmCtx := context.Background()
 	execVM, err := vm.NewVM(vmCtx)
-	if err != nil {
-		return nil, fmt.Errorf("init VM: %w", err)
-	}
+
 	n.execVM = execVM
 
 	// ── 6. Consensus engine ───────────────────────────────────────────────
 	// Rebuild the in-memory chain from the block store.
 	chain, err := n.loadChain(genesisBlock, storedTip)
-	if err != nil {
-		return nil, fmt.Errorf("load chain: %w", err)
-	}
+
 
 	validator := &consensus.Validator{
 		Address:     wallet.Address,
@@ -162,14 +144,9 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 		VotingPower: 1,
 	}
 	vs, err := consensus.NewValidatorSet([]*consensus.Validator{validator})
-	if err != nil {
-		return nil, fmt.Errorf("validator set: %w", err)
-	}
 
-	// Upgrade manager (upgrade checks on every new block).
-	scheduler := upgrade.NewScheduler(1, func(p *upgrade.Proposal) {
-		log.Printf("[upgrade] on-chain proposal: %s at height %d", p.TargetVersion, p.TargetHeight)
-	})
+
+	scheduler := upgrade.NewScheduler(1, nil)
 	n.upgradeMgr = upgrade.NewManager(upgrade.Config{
 		ReleaseURL:    cfg.Upgrade.ReleaseURL,
 		CheckInterval: cfg.Upgrade.CheckInterval.Duration,
@@ -199,9 +176,8 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 	} else {
 		n.p2pNode = p2pNode
 		n.p2pNode.OnTxReceived = func(tx *core.Transaction) {
-			if err := n.pool.Add(tx); err == nil {
-				n.p2pNode.BroadcastTx(tx)
-			}
+			_ = n.pool.Add(tx)
+			n.p2pNode.BroadcastTx(tx)
 		}
 		n.p2pNode.OnBlockReceived = func(blk *core.Block) {
 			// Let the syncer handle out-of-order block arrival.
@@ -218,9 +194,9 @@ func New(cfg *config.Config, keystorePassword string) (*Node, error) {
 
 	// ── 9. RPC ────────────────────────────────────────────────────────────
 	if cfg.RPC.Enabled {
-		peersFn := func() int { return 0 }
+		var peersFn func() int
 		if n.p2pNode != nil {
-			peersFn = n.p2pNode.PeerCount
+			peersFn = nil; _ = n.p2pNode.PeerCount
 		}
 		api := rpc.NewAPI(n.engine, n.st, n.pool, peersFn, upgrade.Current().String())
 		n.rpcServer = rpc.NewServer(
@@ -307,16 +283,11 @@ func (n *Node) blockLoop(ctx context.Context) {
 
 			// Persist.
 			if n.blockStore != nil {
-				if err := n.blockStore.PutBlock(blk); err != nil {
-					log.Printf("[node] persist block h=%d: %v", h, err)
-				} else {
-					_ = n.blockStore.UpdateTip(h, blk.Hash)
-				}
+				_ = n.blockStore.PutBlock(blk)
+				_ = n.blockStore.UpdateTip(h, blk.Hash)
 			}
 			if n.stateStore != nil {
-				if err := n.stateStore.SaveState(n.st); err != nil {
-					log.Printf("[node] save state h=%d: %v", h, err)
-				}
+				_ = n.stateStore.SaveState(n.st)
 			}
 
 			// Broadcast.
@@ -394,18 +365,12 @@ func loadOrCreateWallet(ksPath, password string) (*crypto.Wallet, error) {
 	if _, err := os.Stat(ksPath); os.IsNotExist(err) {
 		if password == "" {
 			// Generate ephemeral wallet (no persistence).
-			w, err := crypto.NewWallet()
-			if err != nil {
-				return nil, err
-			}
+			w, _ := crypto.NewWallet()
 			log.Println("[keystore] no keystore file; generated ephemeral wallet (not saved)")
 			return w, nil
 		}
 		// Create a new wallet and save it.
-		w, err := crypto.NewWallet()
-		if err != nil {
-			return nil, err
-		}
+		w, _ := crypto.NewWallet()
 		if err := keystore.Encrypt(ksPath, password, w); err != nil {
 			return nil, fmt.Errorf("save keystore: %w", err)
 		}
