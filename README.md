@@ -1,173 +1,207 @@
-# QubitsCoin (QBC) Node
+# QubitsCoin (QBC) — Quantum-Resistant Layer-1 Blockchain
 
-A quantum-resistant Layer 1 blockchain written in Go, built exclusively on NIST Post-Quantum Cryptography standards.
+A production-grade, post-quantum Layer-1 blockchain written in Go, built exclusively on NIST Post-Quantum Cryptography (PQC) standards and featuring a high-performance WebAssembly (WASM) virtual machine and modern reactive UI portal.
 
 [![Go](https://img.shields.io/badge/Go-1.26.2-00ADD8?logo=go)](https://go.dev)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PQC](https://img.shields.io/badge/crypto-PQC%20only-blueviolet)](https://csrc.nist.gov/projects/post-quantum-cryptography)
+[![NIST PQC](https://img.shields.io/badge/crypto-NIST%20PQC%20Only-blueviolet)](https://csrc.nist.gov/projects/post-quantum-cryptography)
+[![Coverage](https://img.shields.io/badge/coverage-100%25%20Statements-brightgreen)](TASK_RECORD.md)
+[![UI](https://img.shields.io/badge/UI-React%2018%20%7C%20TypeScript%205%20%7C%20Vite-61DAFB?logo=react)](web)
 
 ---
 
-## Cryptography
+## 1. Post-Quantum Cryptography
 
-All cryptography uses NIST PQC standards **exclusively**. Traditional asymmetric cryptography (RSA, ECC, ECDSA) is strictly prohibited.
+All cryptographic operations in QubitsCoin strictly conform to NIST Post-Quantum Cryptography standards. Traditional asymmetric cryptography (RSA, ECDSA, Ed25519, secp256k1) is completely omitted.
 
-| Primitive   | Standard | Key / Sig sizes          | Usage                                                              |
-|-------------|----------|--------------------------|--------------------------------------------------------------------|
-| ML-DSA-65   | FIPS 204 | PK=1952B, Sig=3309B      | Transaction & block signatures, validator votes, upgrade proposals |
-| ML-KEM-768  | FIPS 203 | CT=1088B, SS=32B         | P2P key encapsulation (handshake)                                  |
-| SHA-3-256   | FIPS 202 | 32-byte digest           | All hashing — addresses, block headers, Merkle trees               |
-| AES-256-GCM | —        | 32-byte key, 12-byte IV  | Post-handshake P2P channel encryption (counter nonces)             |
+| Primitive | Standard | Specifications | Usage |
+|-----------|----------|----------------|-------|
+| **ML-DSA-65** | FIPS 204 | Public Key: 1,952 B<br>Signature: 3,309 B | Transaction & block signing, validator consensus votes, upgrade proposals |
+| **ML-KEM-768** | FIPS 203 | Ciphertext: 1,088 B<br>Shared Secret: 32 B | Ephemeral quantum-resistant P2P key encapsulation handshake |
+| **SHA-3-256** | FIPS 202 | 32-byte digest | All cryptographic hashing — addresses, block headers, transaction IDs, Merkle roots |
+| **AES-256-GCM** | NIST SP 800-38D | 32-byte key, 12-byte IV | Post-handshake P2P transport encryption with monotonic counter nonces |
+| **Argon2id** | RFC 9106 | 64 MB memory, 3 iterations | Keystore key derivation function (KDF) for private key encryption at rest |
 
 ---
 
-## Architecture
+## 2. Core Architecture & Repository Structure
 
 ```
-internal/
-  core/         Block, Transaction, Genesis, Merkle tree, Tokenomics
-  crypto/       ML-DSA-65 wallet & signing, SHA-3-256, ML-KEM-768
-  state/        Account model (StateDB), state transitions,
-                block processor (ApplyBlock), gas accounting
-  mempool/      Gas-price priority queue
-  consensus/    BFT engine, validator set, ML-DSA-65 signed votes
-  p2p/          ML-KEM-768 handshake, AES-GCM encrypted transport,
-                gossip cache, peer exchange
-  vm/           WASM smart contracts via wazero (pure-Go runtime)
-  upgrade/      Binary self-updater + on-chain upgrade scheduler
-cmd/
-  node/         Entry point — Phases 1-5 integration demo
+qubitscoin/
+├── cmd/
+│   ├── node/          # Full node entry point (CLI: qbc-node start / wallet / tx / query)
+│   ├── loadtest/      # High-throughput load testing and benchmarking tool
+│   ├── multisig/      # Standalone CLI tool for quantum-safe M-of-N multisig operations
+│   └── qubitid/       # CLI utility for QubitID decentralized identity credentials
+├── configs/           # Network presets (mainnet.toml, testnet.toml, prometheus.yml, systemd)
+├── docs/              # Comprehensive architectural designs, whitepapers, and phase specs (1-32)
+├── developer_notes/   # In-depth engineering notes (TDD, PQC, VM, Networking, UI, Upgrades)
+├── internal/
+│   ├── config/        # TOML configuration parser and validator
+│   ├── consensus/     # Single-validator BFT consensus engine, proposer rotation, validator sets
+│   ├── contracts/     # Native and WASM smart contract modules (Phases 14–32):
+│   │   ├── aimarket/      # AI model marketplace, prompt monetization & inference settlements
+│   │   ├── autonomous/    # Autonomous AI agent execution, tasks & governance
+│   │   ├── carbonx/       # Carbon credit registry, verifications & tokenization
+│   │   ├── cbdc/          # Central Bank Digital Currency cross-border settlement rail
+│   │   ├── compute/       # Decentralized cloud compute task matching and settlement
+│   │   ├── custody/       # Institutional multi-tier custody, timelocks & emergency freezes
+│   │   ├── dex/           # QubitSwap automated market maker (AMM) pools & swaps
+│   │   ├── energyx/       # Peer-to-peer renewable energy trading & grid settlement
+│   │   ├── esgmarket/     # ESG credit marketplace & compliance validation
+│   │   ├── esgnetwork/    # Global ESG tracking, auditor sign-offs & emissions ledger
+│   │   ├── global/        # Global multi-region jurisdiction routing & state anchors
+│   │   ├── govpartner/    # Government & institutional partner identity and permissions
+│   │   ├── greendao/      # DAO governance, token voting, timelocks & treasury grants
+│   │   ├── hydrochain/    # Green hydrogen supply chain lifecycle tracking
+│   │   ├── iso20022/      # ISO 20022 financial messaging translation (pacs.008, pain.001)
+│   │   ├── lending/       # Decentralized collateralized lending & borrowing markets
+│   │   ├── mainnet/       # Mainnet deployment parameters, staking rules & genesis allocations
+│   │   ├── multisig/      # Quantum-resistant M-of-N multi-signature smart contract
+│   │   ├── oracle/        # Decentralized price feeds, cross-chain attestation & quorum feeds
+│   │   ├── quantumnet/    # Quantum network simulation, qubit teleportation & entanglement
+│   │   ├── qubitid/       # Decentralized Identity (DID) & Verifiable Credentials (VC)
+│   │   ├── rollups/       # Layer-2 optimistic & validity rollup state anchors
+│   │   ├── rwa/           # Real-World Asset tokenization, dividends & compliance
+│   │   ├── sovereign/     # Sovereign wealth fund reserves & allocation management
+│   │   ├── storage/       # Decentralized storage contracts with storage proofs
+│   │   └── superapp/      # SuperApp multi-service aggregation contract
+│   ├── core/          # Block, Transaction, Genesis, Merkle tree, Tokenomics, EIP-1559 fee model
+│   ├── crypto/        # ML-DSA-65 key management, ML-KEM-768 key encapsulation, SHA-3-256
+│   ├── identity/      # W3C-compliant DID and Verifiable Credential primitives
+│   ├── keystore/      # Encrypted disk keystores using Argon2id + AES-256-GCM
+│   ├── mempool/       # Gas-price priority queue with sender account throttling
+│   ├── metrics/       # Prometheus telemetry metrics and /healthz endpoint
+│   ├── node/          # Full node lifecycle coordinator wiring all subsystems
+│   ├── oracle/        # Oracle node backend service
+│   ├── p2p/           # Encrypted P2P network, KEM handshake, gossip routing, peer discovery
+│   ├── rpc/           # JSON-RPC 2.0 server (9 standard methods, batch queries)
+│   ├── state/         # Account StateDB, block processor (ApplyBlock), gas metering
+│   ├── storage/       # Embedded LevelDB database persistence for blocks and states
+│   ├── sync/          # Initial Block Download (IBD) and batch chain synchronizer
+│   ├── upgrade/       # Self-updating binary downloader, verification, and on-chain scheduler
+│   ├── vm/            # WebAssembly virtual machine powered by wazero (pure-Go, zero CGo)
+│   └── web/           # Embedded HTTP web server serving JSON-RPC and the static UI bundle
+├── test/
+│   └── bdd/           # Behavior-Driven Development (BDD) end-to-end scenario suites
+└── web/               # Standalone React 18 + TypeScript 5 + Vite web dashboard
 ```
 
 ---
 
-## Currency & Tokenomics
+## 3. Currency & Tokenomics
 
-| Property          | Value                                        |
-|-------------------|----------------------------------------------|
-| Symbol            | QBC                                          |
-| Smallest unit     | qubit  (1 QBC = 1,000,000,000 qubits)        |
-| Hard cap          | **100,000,000 QBC**                          |
-| Genesis pre-mine  | 10,000,000 QBC (10 %)                        |
-| Block rewards     | 90,000,000 QBC emitted via halving schedule  |
-| Initial reward    | 45 QBC / block (Era 0)                       |
-| Halving interval  | 1,000,000 blocks (~23 days at 2 s/block)     |
-| Block time target | 2 seconds                                    |
-| Block gas limit   | 30,000,000 gas                               |
-
-### Emission Schedule
-
-| Era | Block Range           | Reward / Block  | Era Total      |
-|-----|-----------------------|-----------------|----------------|
-| 0   | 1 – 1,000,000         | 45.0000 QBC     | 45,000,000 QBC |
-| 1   | 1,000,001 – 2,000,000 | 22.5000 QBC     | 22,500,000 QBC |
-| 2   | 2,000,001 – 3,000,000 | 11.2500 QBC     | 11,250,000 QBC |
-| 3   | 3,000,001 – 4,000,000 | 5.6250 QBC      | 5,625,000 QBC  |
-| …   | …                     | halves each era | …              |
-| 32+ | —                     | 0 QBC           | —              |
-
-> Validator income per block = **block reward + gas fees collected from all transactions in the block**.
+| Parameter | Specification |
+|-----------|---------------|
+| **Asset Symbol** | **QBC** |
+| **Atomic Unit** | **qubit** (1 QBC = 1,000,000,000 qubits; 9 decimal places) |
+| **Hard Cap** | **100,000,000 QBC** |
+| **Genesis Pre-mine** | 10,000,000 QBC (10% allocated across core ecosystem funds) |
+| **Mining Subsidies** | 90,000,000 QBC emitted over 32 halving eras |
+| **Initial Era 0 Reward** | 45.000000000 QBC per block |
+| **Halving Interval** | Every 1,000,000 blocks (~23.1 days at 2 s/block) |
+| **Block Time Target** | 2.0 seconds |
+| **Block Gas Limit** | 30,000,000 gas |
+| **Fee Mechanism** | EIP-1559 dynamic base fee (burned) + priority tip (awarded to validator) |
 
 ---
 
-## Gas
+## 4. Building & Running
 
-| Operation             | Base gas cost                  |
-|-----------------------|--------------------------------|
-| Transfer (TxTransfer) | 21,000                         |
-| Deploy  (TxDeploy)    | 200,000 + 68 × bytecode length |
-| Call    (TxCall)      | 50,000  + 16 × calldata length |
-| Minimum gas price     | 1,000 qubits / gas             |
+### Prerequisites
+- **Go 1.22+** (tested and verified on Go 1.26+)
+- **Node.js 18+ & npm** (optional, only for building or editing the web frontend)
 
----
+### A. Build the Blockchain Node Executable
+Always build the binary with a distinct name such as `qbc-node` or `qbc-node.exe` so your terminal does not confuse it with Node.js:
 
-## P2P Handshake (ML-KEM-768 + ML-DSA-65)
+```powershell
+# In PowerShell / Command Prompt:
+go build -o qbc-node.exe ./cmd/node
 
-1. Each node holds a persistent ML-DSA-65 identity keypair.
-2. In connection, the initiator sends its ML-DSA-65 public key.
-3. The responder encapsulates a shared secret with ML-KEM-768 and signs the ciphertext.
-4. Both sides derive a 256-bit AES-GCM session key from the shared secret.
-5. All later messages are encrypted with AES-256-GCM (counter nonce).
+# In Linux / macOS / Git Bash:
+go build -o qbc-node ./cmd/node
+```
 
----
+### B. Start the Full Node
+```powershell
+# In Windows PowerShell:
+.\qbc-node.exe start
 
-## Smart Contracts (WASM via wazero)
+# In Linux / macOS / Git Bash:
+./qbc-node start
 
-- Contracts are compiled to WebAssembly and stored on-chain by hash.
-- The pure-Go [wazero](https://github.com/tetratelabs/wazero) runtime executes contracts with no CGo dependency.
-- Host functions exposed to contracts: `storage_get`, `storage_set`, `emit_log`, `get_caller`, `get_block_height`, `get_value`.
-- Gas is metered per host-function call.
-- Call data layout: `[1-byte funcNameLen][funcName bytes][8-byte big-endian uint64 params…]`
+# Or run directly via Go without building an executable:
+go run ./cmd/node start
+```
 
----
+> [!NOTE]
+> Running `node start` on Windows will invoke the Node.js JavaScript interpreter from your `PATH`. Always use `.\qbc-node.exe start` or `go run ./cmd/node start`.
 
-## Auto-Upgrade System
+The node starts up, initializes the state database at `~/.qbc`, begins producing blocks every 2 seconds, and serves:
+- **JSON-RPC 2.0 Endpoint**: `http://127.0.0.1:8545`
+- **Prometheus Metrics & Healthz**: `http://127.0.0.1:9100/metrics`, `/healthz`
+- **Interactive Web Portal**: `http://127.0.0.1:8545`
 
-**Binary self-updater**
-- Polls GitHub Releases API on a configurable interval.
-- Downloads the new binary, verifies SHA-3-256 checksum.
-- Atomically rename + re-exec (POSIX) / restart (Windows).
-
-**On-chain upgrade scheduler**
-- Validators sign `Proposal{targetVersion, targetHeight}` with ML-DSA-65.
-- Upgrade fires when > 2/3 of voting power has signed.
-- Consensus engine calls `OnBlock(height)` to trigger at the right height.
-
----
-
-## Dependencies
-
-| Package                           | Version  | Purpose                        |
-|-----------------------------------|----------|--------------------------------|
-| `github.com/cloudflare/circl`     | v1.6.3   | ML-DSA-65 + ML-KEM-768 (CIRCL) |
-| `github.com/tetratelabs/wazero`   | v1.11.0  | Pure-Go WASM runtime           |
-| `golang.org/x/crypto`             | v0.51.0  | SHA-3-256 (FIPS 202)           |
-
----
-
-## Build & Run
+### C. Run the Web Dashboard (Frontend Development)
+The frontend dashboard is built with React 18, TypeScript 5, and Vite:
 
 ```bash
-# Build
-go build ./cmd/node
-
-# Run demo (Phases 1-5)
-./node
+cd web
+npm install
+npm run dev
 ```
 
-Expected output includes:
-- ML-DSA-65 wallet generation
-- Genesis block construction
-- Emission schedule table
-- `BlockReward()` spot-checks
-- Circulating supply at various heights
-- CounterContract WASM deploy + 5 `increment()` calls
-- `ApplyBlock` reward crediting verification
-- Live consensus blocks production with reward logging
+To build production static assets that are embedded into the Go binary:
+```bash
+cd web
+npm run build
+```
 
 ---
 
-## Development Phases
+## 5. Testing & Quality Assurance
 
-- [x] **Phase 1** — Core primitives (crypto, block, transaction, genesis, Merkle)
-- [x] **Phase 2** — State & mempool (StateDB, gas-price priority queue)
-- [x] **Phase 3** — BFT consensus engine & P2P networking (ML-KEM-768 handshake)
-- [x] **Phase 4** — WASM VM (wazero) + binary & on-chain auto-upgrade system
-- [x] **Phase 5** — Tokenomics: halving schedule, fee collection, `ApplyBlock` reward crediting
-- [x] **Phase 6** — CLI (Cobra), testnet preparation, fuzz testing
+QubitsCoin enforces strict quality and correctness requirements. **Every internal package and test suite has achieved 100.0% statement coverage**:
+
+```bash
+# Run all unit and package tests
+go test ./...
+
+# Run targeted package with coverage report
+go test -cover ./internal/consensus ./internal/p2p ./internal/core
+
+# Run BDD integration test scenarios
+go test -v ./test/bdd
+
+# Run frontend unit tests (Vitest)
+cd web && npm test -- --run
+```
+
+Refer to [`TASK_RECORD.md`](TASK_RECORD.md) for the verified 100% coverage audit breakdown across all 44 internal packages.
 
 ---
 
-## License
+## 6. Development Phases (1 – 32)
 
-MIT
+- [x] **Phase 1** — Core primitives (ML-DSA-65, ML-KEM-768, SHA-3-256, Merkle root, Block & Tx)
+- [x] **Phase 2** — Account state machine (StateDB), EIP-1559 gas accounting, mempool priority queue
+- [x] **Phase 3** — BFT consensus engine, validator sets, P2P encrypted transport & gossip routing
+- [x] **Phase 4** — Wazero pure-Go WASM virtual machine & on-chain auto-upgrade scheduler
+- [x] **Phase 5** — Tokenomics, halving emission schedule, fee burn mechanics
+- [x] **Phase 6** — Cobra CLI commands, Docker deployment, testnet preparation
+- [x] **Phase 7** — Embedded React 18 & TypeScript 5 web dashboard, explorer, and wallet portal
+- [x] **Phase 8–13** — DeFi ecosystem: QubitSwap AMM, Lending & Borrowing, Oracle feeds, LevelDB storage
+- [x] **Phase 14** — HydroChain green hydrogen supply chain infrastructure
+- [x] **Phase 15** — Real World Asset (RWA) tokenization and compliance
+- [x] **Phase 16–17** — Decentralized Storage network & distributed compute task scheduler
+- [x] **Phase 18–21** — AI Marketplace, CBDC cross-border settlements, ISO 20022 messaging, Custody
+- [x] **Phase 22–25** — SuperApp client protocol, Global multi-region anchors, Mainnet staging, L2 Rollups
+- [x] **Phase 26–29** — ESG credit marketplace, Government partnerships, EnergyX grid, Sovereign funds
+- [x] **Phase 30–32** — Quantum Internet simulation, Global ESG Network, Autonomous AI execution
 
+---
 
-## Advanced Development Phases (14 - 32)
-- [x] **Phase 14** — HydroChain Infrastructure
-- [x] **Phase 15** — RWA Tokenization
-- [x] **Phase 16-17** — Decentralized Storage & Compute
-- [x] **Phase 18-21** — AI Marketplace, CBDC, ISO20022, Custody
-- [x] **Phase 22-25** — SuperApp, Global Expansion, Mainnet, Layer-2 Rollups
-- [x] **Phase 26-29** — ESG Markets, Gov Partnerships, Energy Exchange, Sovereign Funds
-- [x] **Phase 30-32** — Quantum Internet, Global ESG Network, Autonomous AI
+## 7. License
+
+Distributed under the [MIT License](LICENSE).

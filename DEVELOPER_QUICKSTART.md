@@ -17,39 +17,47 @@ Ensure you have the following installed on your local machine:
 3. **Make** (optional, but recommended for build scripts).
 
 ### Step 2: Build the Core Node
-Compile the main blockchain node executable.
+Compile the main blockchain node executable. Use `qbc-node` as the binary name to avoid collision with Node.js in your terminal:
 ```bash
-# Navigate to the root directory
-cd qubitscoin
+# In PowerShell / Windows:
+go build -o qbc-node.exe ./cmd/node
 
-# Build the node executable
-go build -o qbcd ./cmd/node
+# In Linux / macOS / Git Bash:
+go build -o qbc-node ./cmd/node
 ```
 
 ### Step 3: Run the Local Node
-Start the node in standalone/dev mode.
+Start the node in standalone/dev mode:
 ```bash
-# Run the node
-./qbcd
+# In Windows PowerShell:
+.\qbc-node.exe start
+
+# In Linux / macOS / Git Bash:
+./qbc-node start
+
+# Or run directly via Go without building an executable:
+go run ./cmd/node start
 ```
-*Note: In local mode, the node will begin producing blocks automatically and expose a JSON-RPC server on `http://localhost:8545`.*
+*Note: The node produces blocks every 2 seconds, serves JSON-RPC on `http://localhost:8545`, and exposes Prometheus metrics at `http://localhost:9100/metrics`.*
 
 ### Step 4: Run the Test Suites
-The repository contains comprehensive unit tests for all 32 phases (Core, Crypto, QubitVM, Oracles, DeFi, DAOs, etc.).
+The repository contains comprehensive unit tests for all 32 phases (Core, Crypto, QubitVM, Oracles, DeFi, DAOs, etc.) with verified **100% statement coverage**:
 ```bash
-# Run all tests recursively
-go test -v ./...
+# Run all Go tests recursively
+go test ./...
+
+# Run frontend tests (Vitest)
+cd web && npm test -- --run
 ```
 
-### Step 5: Start the Web Dashboards
-The project contains several frontend web interfaces (e.g., the Web Wallet, GreenDAO).
-You can run a simple local HTTP server to view them.
+### Step 5: Start the Web Dashboard
+The project contains a modern React 18 + TypeScript 5 web dashboard (Portal, Explorer, Wallet, DeFi):
 ```bash
-# Using Python's built-in HTTP server
 cd web
-python -m http.server 8080
+npm install
+npm run dev
 ```
-Open your browser to `http://localhost:8080/wallet/` or `http://localhost:8080/greendao/`.
+Open your browser to `http://localhost:5173` (or visit `http://localhost:8545` when running the node, as the built static assets are embedded into the Go node server).
 
 ---
 
