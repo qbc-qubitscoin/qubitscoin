@@ -128,9 +128,11 @@ type GossipMsg struct {
 	Data  []byte
 }
 
+var gobEncodeFunc = gobEncode
+
 // NewTxGossip creates a gossip wrapper for a transaction.
 func NewTxGossip(tx *core.Transaction) (*GossipMsg, error) {
-	data, err := gobEncode(tx)
+	data, err := gobEncodeFunc(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +146,7 @@ func NewTxGossip(tx *core.Transaction) (*GossipMsg, error) {
 
 // NewBlockGossip creates a gossip wrapper for a block.
 func NewBlockGossip(blk *core.Block) (*GossipMsg, error) {
-	data, err := gobEncode(blk)
+	data, err := gobEncodeFunc(blk)
 	if err != nil {
 		return nil, err
 	}

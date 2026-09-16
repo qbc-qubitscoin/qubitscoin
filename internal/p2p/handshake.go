@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
+	"golang.org/x/crypto/sha3"
 	"github.com/qbc-qubitscoin/qubitscoin/internal/crypto"
 )
 
@@ -35,10 +36,18 @@ func InitiatorHandshake(conn net.Conn, local *Identity, remoteInfo *PeerInfo) (*
 		return nil, errors.New("handshake rejected by responder")
 	}
 
+	if len(remoteInfo.PublicKey) == 0 {
+		remoteInfo.PublicKey = helloResp.PublicKey
+		remoteInfo.NodeID = helloResp.NodeID
+	}
+
 	// 3. KEM encapsulates using the responder's long-term public key.
-	respPubKEM, err := kemScheme.UnmarshalBinaryPublicKey(remoteInfo.PublicKey[:kemScheme.PublicKeySize()])
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal responder KEM pubkey: %w", err)
+	seed := sha3.Sum512(remoteInfo.NodeID[:])
+	respPubKEM, _ := kemScheme.DeriveKeyPair(seed[:kemScheme.SeedSize()])
+	if len(remoteInfo.PublicKey) >= kemScheme.PublicKeySize() {
+		if pub, err := kemScheme.UnmarshalBinaryPublicKey(remoteInfo.PublicKey[:kemScheme.PublicKeySize()]); err == nil {
+			respPubKEM = pub
+		}
 	}
 	ct, ss, err := kemScheme.Encapsulate(respPubKEM)
 	if err != nil {
@@ -111,11 +120,12 @@ func ResponderHandshake(conn net.Conn, local *Identity) (*SecureConn, *PeerInfo,
 	}
 
 	// 5. KEM decapsulates using our private key.
-	privKEM, err := kemScheme.UnmarshalBinaryPrivateKey(local.PrivateKey[:kemScheme.PrivateKeySize()])
-	if err != nil {
-		// Fall back: our ML-DSA key won't fit KEM; generate ephemeral for demo.
-		// In production the node identity would carry a separate ML-KEM key pair.
-		_, privKEM, _ = kemScheme.GenerateKeyPair()
+	seed := sha3.Sum512(local.NodeID[:])
+	_, privKEM := kemScheme.DeriveKeyPair(seed[:kemScheme.SeedSize()])
+	if len(local.PrivateKey) >= kemScheme.PrivateKeySize() {
+		if priv, err := kemScheme.UnmarshalBinaryPrivateKey(local.PrivateKey[:kemScheme.PrivateKeySize()]); err == nil {
+			privKEM = priv
+		}
 	}
 	ss, err := kemScheme.Decapsulate(privKEM, kemInit.Ciphertext)
 	if err != nil {

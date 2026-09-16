@@ -60,12 +60,7 @@ func FetchLatestRelease(ctx context.Context, apiURL string) (*Release, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch release: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(resp.Body)
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub API returned %d", resp.StatusCode)
@@ -132,12 +127,7 @@ func fetchText(ctx context.Context, client *http.Client, url string) (string, er
 	if err != nil {
 		return "", err
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
-	}(resp.Body)
+	defer resp.Body.Close()
 	b, err := io.ReadAll(io.LimitReader(resp.Body, 256))
 	if err != nil {
 		return "", err
