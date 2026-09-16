@@ -65,9 +65,18 @@ func NewEngine(
 	}
 }
 
+var (
+	blockInterval = BlockInterval
+	applyTxFunc   = state.ApplyTransaction
+	newBlockFunc  = core.NewBlock
+	commitFunc    = func(e *Engine, blk *core.Block, snap *state.DB) error {
+		return e.commit(blk, snap)
+	}
+)
+
 // Run starts the block-production loop; it blocks until ctx is canceled.
 func (e *Engine) Run(ctx context.Context) {
-	ticker := time.NewTicker(BlockInterval)
+	ticker := time.NewTicker(blockInterval)
 	defer ticker.Stop()
 	log.Printf("[consensus] engine started, validator=%s", crypto.ToHex(e.validatorAddr))
 	for {
@@ -97,7 +106,7 @@ func (e *Engine) produceBlock(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("buildBlock: %w", err)
 	}
-	if err := e.commit(blk, newState); err != nil {
+	if err := commitFunc(e, blk, newState); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
@@ -116,7 +125,7 @@ func (e *Engine) buildBlock(height uint64) (*core.Block, *state.DB, error) {
 	var totalGas, totalBurned, totalTip uint64
 
 	for _, tx := range pending {
-		result, err := state.ApplyTransaction(snap, tx, core.BlockGasLimit-totalGas, e.execVM, baseFee)
+		result, err := applyTxFunc(snap, tx, core.BlockGasLimit-totalGas, e.execVM, baseFee)
 		if err != nil {
 			continue // skip txs that can't pay baseFee or are otherwise invalid
 		}
@@ -143,7 +152,7 @@ func (e *Engine) buildBlock(height uint64) (*core.Block, *state.DB, error) {
 	// ── Compute next block's base fee ────────────────────────────────────────
 	nextBaseFee := core.NextBaseFee(baseFee, totalGas)
 
-	blk, err := core.NewBlock(
+	blk, err := newBlockFunc(
 		height, prevHash, stateRoot,
 		time.Now().UnixNano(),
 		e.validatorAddr, included, totalGas, nextBaseFee, totalBurned,

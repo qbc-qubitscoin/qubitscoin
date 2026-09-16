@@ -50,10 +50,15 @@ func (p *Peer) run(ctx context.Context, onMsg func([]byte)) {
 
 // Send encrypts and sends a message to this peer.
 func (p *Peer) Send(data []byte) error {
+	if p == nil || p.conn == nil {
+		return nil
+	}
 	return p.conn.Send(data)
 }
 
 // Close terminates the peer connection.
 func (p *Peer) Close() {
-	_ = p.conn.Close()
+	if p != nil && p.conn != nil {
+		_ = p.conn.Close()
+	}
 }
