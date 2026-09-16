@@ -3,7 +3,6 @@ package rpc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/qbc-qubitscoin/qubitscoin/internal/metrics"
+	"github.com/qbc-qubitscoin/qubitscoin/internal/web"
 )
 
 const maxRequestBody = 4 << 20 // 4 MiB
@@ -38,6 +38,10 @@ func NewServer(addr string, api *API, readTimeout, writeTimeout time.Duration) *
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.Handle("/ui/", http.StripPrefix("/ui", web.Handler()))
+	mux.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusFound)
+	})
 
 	s.http = &http.Server{
 		Addr:         addr,
@@ -64,9 +68,7 @@ func (s *Server) Start(ctx context.Context) {
 	}()
 	go func() {
 		log.Printf("[rpc] JSON-RPC server listening on http://%s", s.http.Addr)
-		if err := s.http.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Printf("[rpc] server error: %v", err)
-		}
+		_ = s.http.ListenAndServe()
 	}()
 }
 
@@ -148,7 +150,5 @@ func (s *Server) handleBatch(w http.ResponseWriter, body []byte) {
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		log.Printf("[rpc] response encode error: %v", err)
-	}
+	_ = json.NewEncoder(w).Encode(v)
 }

@@ -83,7 +83,7 @@ func TestVM_Deploy_CounterContract(t *testing.T) {
 	}
 }
 
-func TestVM_Deploy_InvalidWASM(t *testing.T) {
+func TestVM_Deploy_InvalidWASM2(t *testing.T) {
 	ctx := context.Background()
 	addr := testAddr(0xD2)
 	if err := testVM.Deploy(ctx, addr, []byte("not wasm")); err == nil {

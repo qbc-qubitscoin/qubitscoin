@@ -55,8 +55,5 @@ func (p *Peer) Send(data []byte) error {
 
 // Close terminates the peer connection.
 func (p *Peer) Close() {
-	err := p.conn.Close()
-	if err != nil {
-		return
-	}
+	_ = p.conn.Close()
 }

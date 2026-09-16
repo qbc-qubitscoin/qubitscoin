@@ -134,7 +134,8 @@ func buildTestHandler(t *testing.T) (*httptest.Server, *crypto.Wallet) {
 	vs, _ := consensus.NewValidatorSet([]*consensus.Validator{validator})
 	engine := consensus.NewEngine(w.Address, w.PublicKey, w.PrivateKey, vs, st, pool, genesis, nil, nil)
 	api := rpc.NewAPI(engine, st, pool, nil, "test")
-	ts := httptest.NewServer(&serveHTTPHandler{api: api})
+	srv := rpc.NewServer("127.0.0.1:0", api, 5*time.Second, 5*time.Second)
+	ts := httptest.NewServer(srv)
 	t.Cleanup(ts.Close)
 	return ts, w
 }

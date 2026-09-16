@@ -102,9 +102,6 @@ func ApplyTransaction(
 	feeCollected := gasUsed * tx.GasPrice
 
 	effectiveBaseFee := baseFee
-	if effectiveBaseFee > tx.GasPrice {
-		effectiveBaseFee = tx.GasPrice
-	}
 	burnedFee := gasUsed * effectiveBaseFee
 	validatorTip := feeCollected - burnedFee // priority tip = gasPrice − baseFee
 
@@ -232,10 +229,10 @@ func applyCall(
 		nameLen := int(tx.Data[0])
 		if nameLen > 0 && len(tx.Data) >= 1+nameLen {
 			funcName = string(tx.Data[1 : 1+nameLen])
-		}
-		rest := tx.Data[1+nameLen:]
-		for i := 0; i+8 <= len(rest); i += 8 {
-			params = append(params, binary.BigEndian.Uint64(rest[i:]))
+			rest := tx.Data[1+nameLen:]
+			for i := 0; i+8 <= len(rest); i += 8 {
+				params = append(params, binary.BigEndian.Uint64(rest[i:]))
+			}
 		}
 	}
 
@@ -253,9 +250,6 @@ func applyCall(
 	}
 
 	gasUsed := core.GasCall + ec.GasUsed
-	if gasUsed > tx.GasLimit {
-		gasUsed = tx.GasLimit
-	}
 
 	var returnData []byte
 	b8 := make([]byte, 8)

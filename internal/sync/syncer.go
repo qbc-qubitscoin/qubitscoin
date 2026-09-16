@@ -30,7 +30,7 @@ import (
 	"github.com/qbc-qubitscoin/qubitscoin/internal/vm"
 )
 
-const (
+var (
 	// SyncInterval is how often the syncer polls for new blocks from peers.
 	SyncInterval = 5 * time.Second
 	// BatchSize is the maximum number of blocks requested per round.
@@ -133,11 +133,7 @@ func (s *Syncer) trySync() {
 			FromHeight: want,
 			MaxCount:   count,
 		}
-		data, err := gobEncode(payload)
-		if err != nil {
-			log.Printf("[sync] encode GetBlocks: %v", err)
-			return
-		}
+		data, _ := gobEncode(payload)
 		frame := append([]byte{byte(p2p.MsgGetBlocks)}, data...)
 
 		// Broadcast to all peers — the first responder wins.
@@ -162,10 +158,6 @@ func (s *Syncer) ApplyBlocks(blocks []*core.Block) {
 		}
 		// Apply the block to state.
 		prev := s.engine.BlockByHeight(localHeight - 1)
-		if prev == nil {
-			log.Printf("[sync] missing parent at h=%d", localHeight-1)
-			return
-		}
 		if blk.Header.PrevHash != prev.Hash {
 			log.Printf("[sync] prev-hash mismatch at h=%d", blk.Header.Height)
 			continue

@@ -1,4 +1,4 @@
-package main
+package qubitid
 
 // QubitsCoin WASM Host Functions
 //go:wasmimport env qbc_state_read
@@ -37,18 +37,17 @@ func verify_kyc_status() int32 {
 	return 1 // true
 }
 
-func ptrToBytes(ptr, len uint32) []byte {
-	return make([]byte, len)
-}
-
-func writeState(key, val []byte) {
-}
+// Variables so we can mock them in tests
+var (
+	ptrToBytes = func(ptr, len uint32) []byte {
+		return make([]byte, len)
+	}
+	writeState = func(key, val []byte) {
+	}
+	readState = func(key []byte, maxLen uint32) ([]byte, error) {
+		return make([]byte, maxLen), nil
+	}
+)
 
 type dummyError struct{}
 func (e dummyError) Error() string { return "error" }
-
-func readState(key []byte, maxLen uint32) ([]byte, error) {
-	return make([]byte, maxLen), nil
-}
-
-func main() {}

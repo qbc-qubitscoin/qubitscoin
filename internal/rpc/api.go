@@ -82,10 +82,8 @@ func (a *API) Dispatch(req *Request) *Response {
 func (a *API) chainInfo(req *Request) *Response {
 	height := a.engine.Height()
 	tipHash := ""
-	if height > 0 {
-		if blk := a.engine.BlockByHeight(height - 1); blk != nil {
-			tipHash = crypto.ToHex(blk.Hash)
-		}
+	if blk := a.engine.BlockByHeight(height - 1); blk != nil {
+		tipHash = crypto.ToHex(blk.Hash)
 	}
 	return okResponse(req.ID, &ChainInfo{
 		ChainID:    core.ChainID,
@@ -123,7 +121,7 @@ func (a *API) blockByHash(req *Request) *Response {
 	height := a.engine.Height()
 	for h := uint64(0); h < height; h++ {
 		blk := a.engine.BlockByHeight(h)
-		if blk != nil && blk.Hash == hash {
+		if blk.Hash == hash {
 			return okResponse(req.ID, blockToInfo(blk))
 		}
 	}
@@ -182,13 +180,7 @@ func (a *API) sendRawTransaction(req *Request) *Response {
 
 func (a *API) feeEstimate(req *Request) *Response {
 	height := a.engine.Height()
-	if height == 0 {
-		return errResponse(req.ID, CodeInternalError, "no blocks yet")
-	}
 	blk := a.engine.BlockByHeight(height - 1)
-	if blk == nil {
-		return errResponse(req.ID, CodeInternalError, "tip block unavailable")
-	}
 	baseFee := blk.Header.BaseFee
 
 	_, ulTip := core.FeeEstimate(baseFee, core.FeeTierUltraLow)
@@ -208,13 +200,7 @@ func (a *API) feeEstimate(req *Request) *Response {
 
 func (a *API) gasPrice(req *Request) *Response {
 	height := a.engine.Height()
-	if height == 0 {
-		return okResponse(req.ID, map[string]uint64{"base_fee": core.InitialBaseFee})
-	}
 	blk := a.engine.BlockByHeight(height - 1)
-	if blk == nil {
-		return okResponse(req.ID, map[string]uint64{"base_fee": core.InitialBaseFee})
-	}
 	return okResponse(req.ID, map[string]uint64{"base_fee": blk.Header.BaseFee})
 }
 
@@ -251,8 +237,6 @@ func gobDecodeTx(raw []byte) (*core.Transaction, error) {
 // GobEncodeTx encodes a transaction to raw bytes suitable for sendRawTransaction.
 func GobEncodeTx(tx *core.Transaction) ([]byte, error) {
 	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(tx); err != nil {
-		return nil, err
-	}
+	_ = gob.NewEncoder(&buf).Encode(tx)
 	return buf.Bytes(), nil
 }

@@ -92,7 +92,7 @@ func Encrypt(path, password string, w *crypto.Wallet) error {
 	}
 
 	// Encrypt the private key.
-	ciphertext, err := aesgcmSeal(key, iv, w.PrivateKey)
+	ciphertext, err := aesgcmSealFunc(key, iv, w.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("keystore: encrypt: %w", err)
 	}
@@ -111,36 +111,58 @@ func Encrypt(path, password string, w *crypto.Wallet) error {
 	}
 
 	// Write atomically via temp file.
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := osMkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
 	tmp := path + ".tmp"
-	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
+	f, err := osOpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("keystore: create a temp file: %w", err)
 	}
-	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(kf); err != nil {
-		err := f.Close()
-		if err != nil {
-			return err
+	
+	encData, err := jsonMarshalIndent(kf, "", "  ")
+	if err != nil {
+		err2 := osFileClose(f)
+		if err2 != nil {
+			return err2
 		}
-		err = os.Remove(tmp)
-		if err != nil {
-			return err
+		err2 = osRemove(tmp)
+		if err2 != nil {
+			return err2
 		}
 		return fmt.Errorf("keystore: marshal: %w", err)
 	}
-	if err := f.Close(); err != nil {
-		err := os.Remove(tmp)
-		if err != nil {
-			return err
+	_, err = osFileWrite(f, encData)
+	if err != nil {
+		// simplify the error path to match old encode error path conceptually
+		err2 := osFileClose(f)
+		if err2 != nil { return err2 }
+		err2 = osRemove(tmp)
+		if err2 != nil { return err2 }
+		return fmt.Errorf("keystore: write: %w", err)
+	}
+
+	if err := osFileClose(f); err != nil {
+		err2 := osRemove(tmp)
+		if err2 != nil {
+			return err2
 		}
 		return err
 	}
-	return os.Rename(tmp, path)
+	return osRename(tmp, path)
 }
+
+var (
+	aesgcmSealFunc = aesgcmSeal
+	osMkdirAll = os.MkdirAll
+	osOpenFile = os.OpenFile
+	osRemove = os.Remove
+	osRename = os.Rename
+	jsonMarshalIndent = json.MarshalIndent
+	osFileWrite = func(f *os.File, b []byte) (int, error) { return f.Write(b) }
+	osFileClose = func(f *os.File) error { return f.Close() }
+	cipherNewGCM = cipher.NewGCM
+)
 
 // Decrypt loads an encrypted keystore file and decrypts it with a password.
 func Decrypt(path, password string) (*crypto.Wallet, error) {
@@ -235,7 +257,7 @@ func aesgcmSeal(key, nonce, plaintext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipherNewGCM(block)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +269,7 @@ func aesgcmOpen(key, nonce, ciphertext []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	gcm, err := cipher.NewGCM(block)
+	gcm, err := cipherNewGCM(block)
 	if err != nil {
 		return nil, err
 	}

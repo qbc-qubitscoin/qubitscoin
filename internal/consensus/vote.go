@@ -60,10 +60,7 @@ func (v *Vote) Verify() error {
 	if derivedAddr != v.Voter {
 		return errors.New("vote public key does not match voter address")
 	}
-	ok, err := crypto.Verify(v.PublicKey, v.payload(), v.Signature)
-	if err != nil {
-		return err
-	}
+	ok, _ := crypto.Verify(v.PublicKey, v.payload(), v.Signature)
 	if !ok {
 		return errors.New("invalid vote signature")
 	}

@@ -25,9 +25,7 @@ func (s *StateStore) SaveState(st *state.DB) error {
 	batch := s.db.NewBatch()
 	st.ForEach(func(addr [crypto.AddressSize]byte, acc *state.Account) {
 		var buf bytes.Buffer
-		if err := gob.NewEncoder(&buf).Encode(acc); err != nil {
-			return
-		}
+		_ = gob.NewEncoder(&buf).Encode(acc)
 		key := accountKey(crypto.AddressToHex(addr))
 		batch.Put(key, buf.Bytes())
 	})

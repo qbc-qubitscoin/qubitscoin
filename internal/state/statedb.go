@@ -125,6 +125,9 @@ func (s *DB) ForEach(fn func(addr [crypto.AddressSize]byte, acc *Account)) {
 
 // Apply replaces this state with the contents of another (used after dry-run).
 func (s *DB) Apply(other *DB) {
+	if s == other || other == nil {
+		return
+	}
 	other.mu.RLock()
 	defer other.mu.RUnlock()
 	s.mu.Lock()
