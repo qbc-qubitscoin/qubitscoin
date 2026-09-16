@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/qbc-qubitscoin/qubitscoin/internal/mempool"
 	"github.com/qbc-qubitscoin/qubitscoin/internal/state"
 	"github.com/qbc-qubitscoin/qubitscoin/internal/upgrade"
+	"github.com/qbc-qubitscoin/qubitscoin/internal/vm"
 )
 
 func newTestGenesis(valAddr [crypto.AddressSize]byte) (*core.Block, *state.DB) {
@@ -176,10 +178,92 @@ func TestEngine_Run_TickerFires(t *testing.T) {
 	pool := mempool.New(100)
 	eng := NewEngine(w.Address, w.PublicKey, w.PrivateKey, vs, st, pool, genesis, nil, nil)
 
-	// Run for 2.2s so ticker (2s) fires at least once
-	ctx, cancel := context.WithTimeout(context.Background(), 2200*time.Millisecond)
+	origInterval := blockInterval
+	defer func() { blockInterval = origInterval }()
+	blockInterval = 10 * time.Millisecond
+
+	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Millisecond)
 	defer cancel()
 
 	eng.Run(ctx)
 }
+
+func TestEngine_Run_ProduceBlockError(t *testing.T) {
+	w, _ := crypto.NewWallet()
+	genesis, st := newTestGenesis(w.Address)
+	vs, _ := NewValidatorSet([]*Validator{
+		{Address: w.Address, PublicKey: w.PublicKey, VotingPower: 100},
+	})
+	pool := mempool.New(100)
+	eng := NewEngine(w.Address, w.PublicKey, []byte("corrupt-priv-key"), vs, st, pool, genesis, nil, nil)
+
+	origInterval := blockInterval
+	defer func() { blockInterval = origInterval }()
+	blockInterval = 10 * time.Millisecond
+
+	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Millisecond)
+	defer cancel()
+
+	eng.Run(ctx)
+}
+
+func TestEngine_BuildBlock_ErrorsAndGasLimitBreak(t *testing.T) {
+	w, _ := crypto.NewWallet()
+	genesis, st := newTestGenesis(w.Address)
+	vs, _ := NewValidatorSet([]*Validator{
+		{Address: w.Address, PublicKey: w.PublicKey, VotingPower: 100},
+	})
+	pool := mempool.New(100)
+	recipient := [crypto.AddressSize]byte{9, 9, 9}
+	tx := core.NewTransfer(w.Address, recipient, w.PublicKey, 0, 1000, 5000)
+	_ = tx.Sign(w.PrivateKey)
+	_ = pool.Add(tx)
+
+	eng := NewEngine(w.Address, w.PublicKey, w.PrivateKey, vs, st, pool, genesis, nil, nil)
+
+	// Test totalGas >= core.BlockGasLimit break
+	origApply := applyTxFunc
+	defer func() { applyTxFunc = origApply }()
+	applyTxFunc = func(snap *state.DB, tx *core.Transaction, gasAvail uint64, vmInst *vm.VM, baseFee uint64) (*state.TxResult, error) {
+		return &state.TxResult{GasUsed: core.BlockGasLimit}, nil
+	}
+
+	_, _, err := eng.buildBlock(1)
+	if err != nil {
+		t.Fatalf("buildBlock failed: %v", err)
+	}
+
+	// Test newBlockFunc error
+	origNewBlock := newBlockFunc
+	defer func() { newBlockFunc = origNewBlock }()
+	newBlockFunc = func(height uint64, prevHash, stateRoot [crypto.HashSize]byte, timestamp int64, validatorAddr [crypto.AddressSize]byte, txs []*core.Transaction, gasUsed, baseFee, burnedFees uint64) (*core.Block, error) {
+		return nil, errors.New("new block error")
+	}
+	_, _, err = eng.buildBlock(1)
+	if err == nil {
+		t.Fatal("expected error from newBlockFunc, got nil")
+	}
+}
+
+func TestEngine_ProduceBlock_CommitError(t *testing.T) {
+	w, _ := crypto.NewWallet()
+	genesis, st := newTestGenesis(w.Address)
+	vs, _ := NewValidatorSet([]*Validator{
+		{Address: w.Address, PublicKey: w.PublicKey, VotingPower: 100},
+	})
+	pool := mempool.New(100)
+	eng := NewEngine(w.Address, w.PublicKey, w.PrivateKey, vs, st, pool, genesis, nil, nil)
+
+	origCommit := commitFunc
+	defer func() { commitFunc = origCommit }()
+	commitFunc = func(e *Engine, blk *core.Block, snap *state.DB) error {
+		return errors.New("commit failure")
+	}
+
+	err := eng.produceBlock(context.Background())
+	if err == nil {
+		t.Fatal("expected error from commitFunc, got nil")
+	}
+}
+
 

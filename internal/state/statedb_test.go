@@ -163,6 +163,8 @@ func TestStateDB_ForEach_InvalidKey(t *testing.T) {
 		t.Errorf("ForEach visited %d accounts, expected 1", count)
 	}
 }
+
+
 func TestStateDB_Apply_SelfAndNil(t *testing.T) {
 	st := NewStateDB()
 	addr := makeAddr(1)
